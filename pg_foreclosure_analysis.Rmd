@@ -16,8 +16,9 @@ Load libraries.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 options(scipen=999)
-#install.packages("ggrepel")
-#install.packages('ggthemes')
+##install.packages("ggrepel")
+##install.packages('ggthemes')
+install.packages("ggmap")
 library(tidyverse)
 library(lubridate)
 library(janitor)
@@ -27,11 +28,83 @@ library(ggplot2)
 library(ggrepel)
 library(tigris)
 library(sf)
+library(ggmap)
 ```
 
-The foreclosure dataset contains 71,676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure.
+```{r}
+install.packages("htmltools")
+install.packages("devtools")
+library(devtools)
+devtools::install_github("hrbrmstr/rgeocodio")
+library(rgeocodio)
+```
 
-The data was then cleaned and a column was created to concatenate the street number, street name, city, state and zip code information into a new column called full_address.
+
+```{r}
+install.packages("httr")
+library(httr)
+```
+
+The foreclosure dataset contains 71676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure.
+
 ```{r}
 foreclosure_pg <- read_csv("datasets/pg_foreclosures.csv", guess_max = 71677)
 ```
+
+We will eventually need to generate census tract ID numbers for each address, so we will create a new dataframe that excludes records with missing zip code values. This filters out roughly 1600 records.
+
+```{r}
+pg_foreclosures_filtered <- na.omit(foreclosure_pg[!is.na(foreclosure_pg$zip_code), ])
+```
+
+
+
+
+```{r}
+# Install and load the httr package
+if (!require("httr")) {
+  install.packages("httr")
+}
+library(httr)
+
+# Define your API key
+api_key <- "8efce88f8d41d361a0ab0045b4131f78ee063fb6"
+
+# Define a function to geocode addresses using the Census Geocoder API
+geocode_addresses <- function(addresses) {
+  base_url <- "https://geocoding.geo.census.gov/geocoder/locations/addressbatch"
+  
+  # Construct the API request
+  request <- POST(base_url,
+                  query = list(format = "json", benchmark = "Public_AR_Current", vintage = "Current_Current", layers = "14"),
+                  body = list(addresses = addresses),
+                  encode = "json")
+  
+  # Set API key in request headers
+  config(request, add_headers("Authorization" = paste("Bearer", api_key)))
+  
+  # Send the API request
+  response <- content(request)
+  
+  return(response)
+}
+```
+
+```{r}
+# Get addresses from the "location" column of pg_foreclosures_filtered
+addresses <- pg_foreclosures_filtered$location
+
+# Geocode the addresses
+geocoded_data <- geocode_addresses(addresses)
+
+# Extract census tract IDs from the response
+# Note: The structure of the response may vary based on the API endpoint and parameters used
+# You'll need to inspect the response structure to extract the relevant information
+census_tract_ids <- sapply(geocoded_data$result$addressMatches, function(x) x$geographies$'Census Tracts'$TRACT)
+
+# Add census tract IDs as a new column to pg_foreclosures_filtered
+pg_foreclosures_filtered$census_tract_id <- census_tract_ids
+```
+
+
+The data was then cleaned and a column was created to concatenate the street number, street name, city, state and zip code information into a new column called full_address.
