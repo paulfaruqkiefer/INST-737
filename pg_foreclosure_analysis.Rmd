@@ -1,0 +1,37 @@
+---
+title: "Foreclosure Data Analysis"
+author: "Jasper Evans, Krehl Kasayan, Paul Kiefer, Pablo Suarez"
+date: "2024-20-2024"
+output: html_document
+---
+
+# Prince George's County Maryland Foreclosure Analysis
+
+We will use Prince George's County's foreclosure dataset as the core of our project (https://data.princegeorgescountymd.gov/Urban-Planning/County-Foreclosures/mnie-hrv7/about_data). The dataset is maintained by the Prince George's County planning department and lists foreclosures by address between 2009 and 2024. 
+
+## Data Setup
+
+Load libraries.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+#install.packages("ggrepel")
+#install.packages('ggthemes')
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(ggthemes)
+library(tidycensus)
+library(ggplot2)
+library(ggrepel)
+library(tigris)
+library(sf)
+```
+
+The foreclosure dataset contains 71,676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure.
+
+The data was then cleaned and a column was created to concatenate the street number, street name, city, state and zip code information into a new column called full_address.
+```{r}
+foreclosure_pg <- read_csv("datasets/pg_foreclosures.csv", guess_max = 71677)
+```
