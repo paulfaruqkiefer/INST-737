@@ -43,6 +43,7 @@ We will eventually need to generate census tract ID numbers for each address, so
 foreclosure_pg_census_tracts <- read_csv("datasets/pg_foreclosure_tract_geocodio.csv", guess_max = 71677) |>
   clean_names()
 ```
+
 ```{r}
 tracts_unique <- length(unique(foreclosure_pg_census_tracts$census_tract_code))
 
@@ -51,13 +52,17 @@ print(tracts_unique)
 
 ```{r}
 # Perform inner join based on the 'location' column
-pg_foreclosures_with_tracts <- inner_join(foreclosure_pg_census_tracts, foreclosure_pg, by = "location")
+pg_foreclosures_with_tracts <- left_join(foreclosure_pg_census_tracts, foreclosure_pg, by = "location")
 
 # Print the merged dataset
 print(pg_foreclosures_with_tracts)
 ```
 
 ```{r}
-pg_foreclosures_filtered <- na.omit(pg_foreclosures_with_tracts[!is.na(pg_foreclosures_with_tracts$census_tract_code), ])
+pg_foreclosures_filtered <- pg_foreclosures_with_tracts[!is.na(pg_foreclosures_with_tracts$census_tract_code), ]
+```
+
+```{r}
+pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -city.y, -state.y, street_address)
 ```
 
