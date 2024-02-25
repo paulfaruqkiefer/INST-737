@@ -57,38 +57,57 @@ pg_foreclosures_with_tracts <- left_join(foreclosure_pg_census_tracts, foreclosu
 # Convert "submitteddate" column to date type
 pg_foreclosures_with_tracts$submitteddate <- as.Date(pg_foreclosures_with_tracts$submitteddate, format = "%m/%d/%Y")
 
+# Extract the year and month from "submitteddate"
+pg_foreclosures_with_tracts$year <- year(pg_foreclosures_with_tracts$submitteddate)
+pg_foreclosures_with_tracts$month <- month(pg_foreclosures_with_tracts$submitteddate)
+
 # Create a year-month column for deduplication
-pg_foreclosures_with_tracts$year_month <- paste(year(pg_foreclosures_with_tracts$submitteddate), 
-  as.integer(month(pg_foreclosures_with_tracts$submitteddate, label = TRUE)), sep = "-")
+pg_foreclosures_with_tracts$year_month <- as.Date(paste(pg_foreclosures_with_tracts$year, pg_foreclosures_with_tracts$month, "01", sep = "-"), format = "%Y-%m-%d")
 
 # Print the dataset
 print(foreclosure_pg_census_tracts)
 ```
 ```{r}
-# To cast a wide net, we create one version that identifies rows with matching values in the FilerName, MemberName, State, Year and standardized_dest columns -- columns that consistently match from entry to entry.
+# To cast a wide net, we create one version that identifies rows with matching values in the "street_address", "city.y", "propertyid", and "year" columns -- columns that consistently match from entry to entry.
 
-columns_wide <- c("FilerName", "MemberName", "State", "Year", "standardized_dest")
+columns_wide <- c("street_address", "city.y", "propertyid", "year")
 
-# To cast a narrower net, we create another version that identifies rows with matching values in the FilerName, MemberName, State, and standardized_dest columns, as well as the year_month and sponsors_cleaned columns -- columns that may change within an otherwise matching set. 
+# To cast a narrower net, we create another version that identifies rows with matching values in the "street_address", "city.y", and "propertyid" columns, as well as the year_month column -- a column that may change within an otherwise matching set. 
 
-columns_narrow <- c("FilerName", "MemberName", "State", "year_month", "standardized_dest", "sponsors_cleaned")
+columns_narrow <- c("street_address", "city.y", "propertyid", "year_month")
 
-duplicates_logical_wide <- duplicated(filtered_house_travel[columns_wide], fromLast = TRUE) | duplicated(filtered_house_travel[columns_wide])
+duplicates_logical_wide <- duplicated(pg_foreclosures_with_tracts[columns_wide], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_wide])
 
-duplicates_logical_narrow <- duplicated(filtered_house_travel[columns_narrow], fromLast = TRUE) | duplicated(filtered_house_travel[columns_narrow])
+duplicates_logical_narrow <- duplicated(pg_foreclosures_with_tracts[columns_narrow], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_narrow])
 
 # Subset the original dataset using the wide and narrow duplicate vectors to get the duplicate rows
-duplicates_wide <- subset(filtered_house_travel, duplicates_logical_wide)
+duplicates_wide <- subset(pg_foreclosures_with_tracts, duplicates_logical_wide)
 
-duplicates_narrow <- subset(filtered_house_travel, duplicates_logical_narrow)
+duplicates_narrow <- subset(pg_foreclosures_with_tracts, duplicates_logical_narrow)
 
 # Arrange the rows to consolidate matching groups.
-duplicates_wide <- arrange(duplicates_wide, FilerName, MemberName, State, Year, standardized_dest)
+duplicates_wide <- arrange(duplicates_wide, street_address, city.y, propertyid, year)
 
-duplicates_narrow <- arrange(duplicates_narrow, FilerName, MemberName, State, Year, standardized_dest, sponsors_cleaned)
+duplicates_narrow <- arrange(duplicates_narrow, street_address, city.y, propertyid, year_month)
+
+rows_to_keep_narrow <- distinct(duplicates_narrow, .keep_all = TRUE)
 ```
 
+```{r}
+missing <- anti_join(duplicates_narrow, duplicates_wide, by = c("propertyid"))
+```
 
+```{r}
+rows_to_keep_narrow <- distinct(duplicates_narrow, .keep_all = TRUE)
+```
+
+```{r}
+pg_foreclosures_filtered <- anti_join(pg_foreclosures_with_tracts, duplicates_wide, by = c("street_address", "city.y", "propertyid", "year_month"))
+```
+
+```{r}
+pg_foreclosures_filtered <- bind_rows(pg_foreclosures_filtered, rows_to_keep_narrow)
+```
 
 ```{r}
 pg_foreclosures_filtered <- pg_foreclosures_with_tracts[!is.na(pg_foreclosures_with_tracts$census_tract_code), ]
