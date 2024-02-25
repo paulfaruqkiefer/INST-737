@@ -110,15 +110,15 @@ pg_foreclosures_filtered <- bind_rows(pg_foreclosures_filtered, rows_to_keep_nar
 ```
 
 ```{r}
-pg_foreclosures_filtered <- pg_foreclosures_with_tracts[!is.na(pg_foreclosures_with_tracts$census_tract_code), ]
+pg_foreclosures_filtered <- pg_foreclosures_filtered[!is.na(pg_foreclosures_filtered$census_tract_code), ]
 ```
 
 ```{r}
-pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -city.y, -state.y, street_address, -full_fips_block)
+pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -full_fips_block)
 ```
 
 ```{r}
-pg_foreclosures_filtered <- pg_foreclosure_filtered |>
-  filter()
+pg_foreclosures_filtered <- pg_foreclosures_filtered |>
+  filter(state.x == "MD")
 ```
 
