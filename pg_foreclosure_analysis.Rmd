@@ -124,6 +124,7 @@ pg_foreclosures_filtered <- pg_foreclosures_filtered |>
 
 ```{r}
 pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
-  group
+  group_by(census_tract_code) |>
+  summarize(foreclosure_count = n())
 ```
 
