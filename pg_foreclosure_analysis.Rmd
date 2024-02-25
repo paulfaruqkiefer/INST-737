@@ -130,7 +130,7 @@ pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
 
 ```{r}
 #Grab population by md tract
-md_tract_pop <- get_acs(geography = "tract",
+md_tract_pop_2020 <- get_acs(geography = "tract",
               variables = c(tract_pop = "B01003_001"),
               state = "MD",
               year = 2020,
@@ -139,18 +139,108 @@ md_tract_pop <- get_acs(geography = "tract",
 #Drop state ID # and county code prefixes from the tract ID # in the GEOID column.
 ```
 
-
 ```{r}
-pg_tract_pop <- md_tract_pop[str_detect(md_tract_pop$NAME, "Prince George"), ]
+pg_tract_pop_2020 <- md_tract_pop_2020[str_detect(md_tract_pop_2020$NAME, "Prince George"), ]
 
-pg_tract_pop$tract_number <- gsub('24033', '', pg_tract_pop$GEOID)
+pg_tract_pop_2020$tract_number <- gsub('24033', '', pg_tract_pop_2020$GEOID)
 ```
 
 ```{r}
-pg_foreclosures_per_tract <- left_join(md_tract_pop, pg_foreclosures_per_tract, by=c("tract_number" = "census_tract_code")) |>
+pg_foreclosures_per_tract <- left_join(pg_tract_pop_2020, pg_foreclosures_per_tract, by=c("tract_number" = "census_tract_code")) |>
   #Rename variable
-  rename(tract_pop = estimate) |>
+  rename(tract_pop_2020 = estimate) |>
+  #Clean up
+  select(-NAME, -variable) |> 
   #Add notices per capita column
-  mutate(foreclosure_pc_2020 = (foreclosure_count/tract_pop)*1000)
+  mutate(foreclosure_pc_2020 = (foreclosure_count/tract_pop_2020)*1000)
 ```
 
+
+```{r}
+md_medhouseholdincome_2010_tract <- get_acs(geography = "tract", state="MD",
+              variables = c(medhouseholdincome_2010 = "B19013_001"),
+              year = 2010)
+```
+```{r}
+md_medhouseholdincome_2015_zip <- get_acs(geography = "tract", state="MD",
+              variables = c(medhouseholdincome_2015 = "B19013_001"),
+              year = 2015)
+```
+
+```{r}
+md_medhouseholdincome_2020_zip <- get_acs(geography = "zcta",
+              variables = c(medhouseholdincome_2019= "B19013_001"),
+              year = 2020)
+```
+
+```{r}
+md_total_housing_2010 <- get_acs(geography = "tract",
+              variables = c(total_housing_2010 = "B25001_001"),
+              state = "MD",
+              year = 2010)
+```
+
+
+```{r}
+md_total_housing_2015 <- get_acs(geography = "tract",
+              variables = c(total_housing_2015 = "B25001_001"),
+              state = "MD",
+              year = 2015)
+```
+
+
+```{r}
+md_total_housing_2020 <- get_acs(geography = "tract",
+              variables = c(total_housing_2020 = "B25001_001"),
+              state = "MD",
+              year = 2020)
+```
+
+```{r}
+md_owner_housing_2010 <- get_acs(geography = "tract",
+              variables = c(owner_housing_2015 = "B25003_002"),
+              state = "MD",
+              year = 2010)
+```
+```{r}
+md_owner_housing_2015 <- get_acs(geography = "tract",
+              variables = c(owner_housing_2015 = "B25003_002"),
+              state = "MD",
+              year = 2015)
+```
+```{r}
+md_owner_housing_2020 <- get_acs(geography = "tract",
+              variables = c(owner_housing_2020 = "B25003_002"),
+              state = "MD",
+              year = 2020)
+```
+
+```{r}
+md_debt_housing_2010 <- get_acs(geography = "tract",
+              variables = c(debt_housing_2010 = "B25081_002"),
+              state = "MD",
+              year = 2010)
+```
+
+```{r}
+md_debt_housing_2015 <- get_acs(geography = "tract",
+              variables = c(debt_housing_2015 = "B25081_002"),
+              state = "MD",
+              year = 2015)
+```
+
+
+```{r}
+md_debt_housing_2020 <- get_acs(geography = "tract",
+              variables = c(debt_housing_2020 = "B25081_002"),
+              state = "MD",
+              year = 2020)
+```
+
+
+```{r}
+md_medage_2020 <- get_acs(geography = "tract",
+              variables = c(medage_2020 = "B01002_001"),
+              state = "MD",
+              year = 2020)
+```
