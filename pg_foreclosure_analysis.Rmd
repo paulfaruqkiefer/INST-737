@@ -63,6 +63,11 @@ pg_foreclosures_filtered <- pg_foreclosures_with_tracts[!is.na(pg_foreclosures_w
 ```
 
 ```{r}
-pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -city.y, -state.y, street_address)
+pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -city.y, -state.y, street_address, -full_fips_block)
+```
+
+```{r}
+pg_foreclosures_filtered <- pg_foreclosure_filtered |>
+  filter()
 ```
 
