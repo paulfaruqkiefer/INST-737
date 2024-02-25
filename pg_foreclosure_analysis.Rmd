@@ -128,3 +128,29 @@ pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
   summarize(foreclosure_count = n())
 ```
 
+```{r}
+#Grab population by md tract
+md_tract_pop <- get_acs(geography = "tract",
+              variables = c(tract_pop = "B01003_001"),
+              state = "MD",
+              year = 2020,
+              geometry = TRUE)
+
+#Drop state ID # and county code prefixes from the tract ID # in the GEOID column.
+```
+
+
+```{r}
+pg_tract_pop <- md_tract_pop[str_detect(md_tract_pop$NAME, "Prince George"), ]
+
+pg_tract_pop$tract_number <- gsub('24033', '', pg_tract_pop$GEOID)
+```
+
+```{r}
+pg_foreclosures_per_tract <- left_join(md_tract_pop, pg_foreclosures_per_tract, by=c("tract_number" = "census_tract_code")) |>
+  #Rename variable
+  rename(tract_pop = estimate) |>
+  #Add notices per capita column
+  mutate(foreclosure_pc_2020 = (foreclosure_count/tract_pop)*1000)
+```
+
