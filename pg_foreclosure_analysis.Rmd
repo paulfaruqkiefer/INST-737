@@ -122,3 +122,8 @@ pg_foreclosures_filtered <- pg_foreclosures_filtered |>
   filter(state.x == "MD")
 ```
 
+```{r}
+pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
+  group
+```
+
