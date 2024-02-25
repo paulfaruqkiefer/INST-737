@@ -34,13 +34,13 @@ library(ggmap)
 The foreclosure dataset contains 71676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure.
 
 ```{r}
-foreclosure_pg <- read_csv("datasets/pg_foreclosures.csv", guess_max = 71677)
+foreclosure_pg <- read_csv("datasets/pg_foreclosures.csv", guess_max = 71676)
 ```
 
 We will eventually need to generate census tract ID numbers for each address, so we will create a new dataframe that excludes records with missing zip code values. This filters out roughly 1600 records.
 
 ```{r}
-foreclosure_pg_census_tracts <- read_csv("datasets/pg_foreclosure_tract_geocodio.csv", guess_max = 71677) |>
+foreclosure_pg_census_tracts <- read_csv("datasets/pg_foreclosure_tract_geocodio.csv", guess_max = 71676) |>
   clean_names()
 ```
 
@@ -54,9 +54,41 @@ print(tracts_unique)
 # Perform inner join based on the 'location' column
 pg_foreclosures_with_tracts <- left_join(foreclosure_pg_census_tracts, foreclosure_pg, by = "location")
 
-# Print the merged dataset
-print(pg_foreclosures_with_tracts)
+# Convert "submitteddate" column to date type
+pg_foreclosures_with_tracts$submitteddate <- as.Date(pg_foreclosures_with_tracts$submitteddate, format = "%m/%d/%Y")
+
+# Create a year-month column for deduplication
+pg_foreclosures_with_tracts$year_month <- paste(year(pg_foreclosures_with_tracts$submitteddate), 
+  as.integer(month(pg_foreclosures_with_tracts$submitteddate, label = TRUE)), sep = "-")
+
+# Print the dataset
+print(foreclosure_pg_census_tracts)
 ```
+```{r}
+# To cast a wide net, we create one version that identifies rows with matching values in the FilerName, MemberName, State, Year and standardized_dest columns -- columns that consistently match from entry to entry.
+
+columns_wide <- c("FilerName", "MemberName", "State", "Year", "standardized_dest")
+
+# To cast a narrower net, we create another version that identifies rows with matching values in the FilerName, MemberName, State, and standardized_dest columns, as well as the year_month and sponsors_cleaned columns -- columns that may change within an otherwise matching set. 
+
+columns_narrow <- c("FilerName", "MemberName", "State", "year_month", "standardized_dest", "sponsors_cleaned")
+
+duplicates_logical_wide <- duplicated(filtered_house_travel[columns_wide], fromLast = TRUE) | duplicated(filtered_house_travel[columns_wide])
+
+duplicates_logical_narrow <- duplicated(filtered_house_travel[columns_narrow], fromLast = TRUE) | duplicated(filtered_house_travel[columns_narrow])
+
+# Subset the original dataset using the wide and narrow duplicate vectors to get the duplicate rows
+duplicates_wide <- subset(filtered_house_travel, duplicates_logical_wide)
+
+duplicates_narrow <- subset(filtered_house_travel, duplicates_logical_narrow)
+
+# Arrange the rows to consolidate matching groups.
+duplicates_wide <- arrange(duplicates_wide, FilerName, MemberName, State, Year, standardized_dest)
+
+duplicates_narrow <- arrange(duplicates_narrow, FilerName, MemberName, State, Year, standardized_dest, sponsors_cleaned)
+```
+
+
 
 ```{r}
 pg_foreclosures_filtered <- pg_foreclosures_with_tracts[!is.na(pg_foreclosures_with_tracts$census_tract_code), ]
