@@ -177,6 +177,7 @@ pg_foreclosures_per_tract <- left_join(pg_tract_pop_2020, pg_foreclosures_per_tr
   mutate(foreclosure_pc_2020 = (foreclosure_count/tract_pop_2020)*1000)
 ```
 
+
 We will now repeat the process with other ACS variables, starting with median household income. We will use the median household income as of the 2016-2020 ACS as a stand-alone independent variable and use the changes between the 2006-2010, 2011-2015 and 2016-2020 ACS as separate independent variables.
 
 Median household income as of the 2006-2010:
@@ -208,7 +209,7 @@ pg_medhouseholdincome_2015_tract$tract_number <- gsub('24033', '', pg_medhouseho
 ```
 Median household income as of the 2016-2020 ACS:
 ```{r}
-md_medhouseholdincome_2020_tract <- get_acs(geography = "zcta",
+md_medhouseholdincome_2020_tract <- get_acs(geography = "tract", state="MD",
               variables = c(medhouseholdincome_2020= "B19013_001"),
               year = 2020)
 
@@ -247,7 +248,6 @@ pg_total_housing_2015 <- md_total_housing_2015[str_detect(md_total_housing_2015$
 # Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
 pg_total_housing_2015$tract_number <- gsub('24033', '', pg_total_housing_2015$GEOID)
 ```
-
 
 Total housing units as of 2016-2020 ACS.
 ```{r}
@@ -322,20 +322,36 @@ pg_debt_housing_2010 <- md_debt_housing_2010[str_detect(md_debt_housing_2010$NAM
 # Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
 pg_debt_housing_2010$tract_number <- gsub('24033', '', pg_debt_housing_2010$GEOID)
 ```
+
+
 Mortgaged housing as of 2011-2015 ACS:
 ```{r}
 md_debt_housing_2015 <- get_acs(geography = "tract",
               variables = c(debt_housing_2015 = "B25081_002"),
               state = "MD",
               year = 2015)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_debt_housing_2015 <- md_debt_housing_2015[str_detect(md_debt_housing_2015$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_debt_housing_2015$tract_number <- gsub('24033', '', pg_debt_housing_2015$GEOID)
 ```
+
 Mortgaged housing as of the 2016-2020 ACS:
 ```{r}
 md_debt_housing_2020 <- get_acs(geography = "tract",
               variables = c(debt_housing_2020 = "B25081_002"),
               state = "MD",
               year = 2020)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_debt_housing_2020 <- md_debt_housing_2020[str_detect(md_debt_housing_2020$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_debt_housing_2020$tract_number <- gsub('24033', '', pg_debt_housing_2020$GEOID)
 ```
+
 
 While the relationship between age and foreclosure risk is unclear, it will be worthwhile to ascertain whether there is a strong correlation between foreclosure rate per capita and median age at the tract level. For that, we need the median age at the tract level from the 2016-2020 ACS. 
 ```{r}
@@ -343,6 +359,12 @@ md_medage_2020 <- get_acs(geography = "tract",
               variables = c(medage_2020 = "B01002_001"),
               state = "MD",
               year = 2020)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_medage_2020 <- md_medage_2020[str_detect(md_medage_2020$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_medage_2020$tract_number <- gsub('24033', '', pg_medage_2020$GEOID)
 ```
 
 The relationship between foreclosure risk and the share of non-Hispanic white people in a given geography is well-documented, with race and ethnicity data standing in for longstanding economic inequalities that often split on racial lines -- particularly in urban and suburban communities like Prince George's County. We will use these datapoints in two ways:
@@ -352,20 +374,39 @@ The 2006-2010 ACS estimates for non-Hispanic white population by tract will be u
 ```{r}
 md_nhwhite_2010 <- get_acs(geography = "tract", state="MD",
   variables = c(nhwhite_2010 = "B03002_003E"), year = 2010)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_nhwhite_2010 <- md_nhwhite_2010[str_detect(md_nhwhite_2010$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_nhwhite_2010$tract_number <- gsub('24033', '', pg_nhwhite_2010$GEOID)
 ```
 The 2016-2020 ACS estimates for non-Hispanic white population by tract will be use to complete the year-over-year percentage change calculation and as a stand-alone independent variable.
 
 ```{r}
 md_nhwhite_2020 <- get_acs(geography = "tract", state="MD",
   variables = c(nhwhite_2020 = "B03002_003E"), year = 2020)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_nhwhite_2020 <- md_nhwhite_2020[str_detect(md_nhwhite_2020$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_nhwhite_2020$tract_number <- gsub('24033', '', pg_nhwhite_2020$GEOID)
 ```
+
 We will use the 2006-2010 ACS estimates of the population with "income in the past 12 months below poverty level" and the 2016-2020 ACS estimates of the same variable for another comparison. Because this number includes all people over the age of 5, it is an imperfect measurement of poverty rate because it includes both children and adults. It is, however, simpler than adding the totals for each age group over the age of 18 and comparing those poverty rates to the share of the population in each tract that falls into each age group.
 
 Number of people (>5 years old) with incomes below poverty level by census tract as of the 2006-2010 ACS:
 
 ```{r}
-md_poverty_2020 <- get_acs(geography = "tract", state="MD",
-  variables = c(poverty_2020 = "B16009_002E"), year = 2020)
+md_poverty_2010 <- get_acs(geography = "tract", state="MD",
+  variables = c(poverty_2020 = "B16009_002E"), year = 2010)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_poverty_2010 <- md_poverty_2010[str_detect(md_poverty_2010$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_poverty_2010$tract_number <- gsub('24033', '', pg_poverty_2010$GEOID)
 ```
 
 
@@ -374,21 +415,101 @@ Number of people (>5 years old) with incomes below poverty level by census tract
 ```{r}
 md_poverty_2020 <- get_acs(geography = "tract", state="MD",
   variables = c(poverty_2020 = "B16009_002E"), year = 2020)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_poverty_2020 <- md_poverty_2020[str_detect(md_poverty_2020$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_poverty_2020$tract_number <- gsub('24033', '', pg_poverty_2020$GEOID)
 ```
 
 At last, we can begin joining the ACS data to our core dataset. 
 
-We start with the number of housing units per tract:
+
+We start by joining the core dataset with the data on median household income by tract:
 
 ```{r}
-# Left join the pg_tract_pop_2020 data from the ACS with the pg_foreclosures_per_tract dataset.
-pg_foreclosures_per_tract <- left_join(pg_tract_pop_2010, pg_foreclosures_per_tract, by=c("tract_number" = "census_tract_code")) |>
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_medhouseholdincome_2010_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
-  rename(tract_housing_units_2010 = estimate) |>
+  rename(tract_medincome_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable, -GEOID.y) 
+```
+
+```{r}
+# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_medhouseholdincome_2015_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_medincome_2015 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable, -GEOID.x) 
+```
+
+```{r}
+# Left join the 2016-2020 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_medhouseholdincome_2020_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_medincome_2020 = estimate) |>
   #Remove extraneous columns.
   select(-NAME, -variable) 
 ```
 
 
+We join the core dataset with the data on the number of housing units per tract:
 
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_total_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_housingunits_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
 
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_total_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_housingunits_2015 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_total_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_housingunits_2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+We join the core dataset with the data on the number of owner-occupied housing units per tract:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_owner_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_owneroccupied_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_owner_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_owneroccupied_2015 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2016-2020 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_owner_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_owneroccupied_2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
