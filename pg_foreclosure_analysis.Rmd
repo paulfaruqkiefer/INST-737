@@ -7,7 +7,7 @@ output: html_document
 
 # Prince George's County Maryland Foreclosure Analysis
 
-We will use Prince George's County's foreclosure dataset as the core of our project (https://data.princegeorgescountymd.gov/Urban-Planning/County-Foreclosures/mnie-hrv7/about_data). The dataset is maintained by the Prince George's County planning department and lists foreclosures by address between 2009 and 2024. 
+We will use Prince George's County's foreclosure dataset as the core of our project (https://data.princegeorgescountymd.gov/Urban-Planning/County-Foreclosures/mnie-hrv7/about_data). The dataset is maintained by the Prince George's County planning department and lists foreclosures by address between 2009 and 2024. The dataset has imperfections, including some apparent duplicate records.
 
 ## Data Setup
 
@@ -31,117 +31,136 @@ library(ggmap)
 ```
 
 
-The foreclosure dataset contains 71676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure.
+The foreclosure dataset contains 71676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure. For our purposes, only the components of the address will be needed. 
 
 ```{r}
+# Read in the initial dataset, setting a guess_max limit to improve the accuracy of the data types assigned to each column.
 foreclosure_pg <- read_csv("datasets/pg_foreclosures.csv", guess_max = 71676)
 ```
-
-We will eventually need to generate census tract ID numbers for each address, so we will create a new dataframe that excludes records with missing zip code values. This filters out roughly 1600 records.
+Because we will need to group foreclosure records by census tract, we first need to determine the census tract identification number for each address in the original dataset. The geolocation service Geocodio (https://www.geocod.io/) provides two options: An API or a straightforward upload process. The Geocodio API instructions were too convoluted for our specific task, so instead, we uploaded the addresses from the original dataset, producing a new dataset that includes each address and the corresponding census tract identification number, among other geolocation datapoints.
 
 ```{r}
+#Read in the geocoded address dataset.
 foreclosure_pg_census_tracts <- read_csv("datasets/pg_foreclosure_tract_geocodio.csv", guess_max = 71676) |>
   clean_names()
 ```
+For our eventual predictive analysis, we want a sample of at least 100 census tracts to improve the accuracy of our model. We can use the unique() function to count the number of unique tract codes in the pg_foreclosure_census_tracts dataframe.
 
 ```{r}
 tracts_unique <- length(unique(foreclosure_pg_census_tracts$census_tract_code))
 
 print(tracts_unique)
 ```
+While some of those tracts may be erroneous -- in another state, for instance -- we are comfortably above the 100-tract threshhold.
+
+We can now use an inner join to combine the original dataset with the address and tract dataset using the matching values in the "location" columns. We will also need year and year_month columns for future cleaning, so we add those here annd format them as date type. 
 
 ```{r}
-# Perform inner join based on the 'location' column
-pg_foreclosures_with_tracts <- left_join(foreclosure_pg_census_tracts, foreclosure_pg, by = "location")
+# Perform inner join based on the 'location' column.
+pg_foreclosures_with_tracts <- inner_join(foreclosure_pg, foreclosure_pg_census_tracts, by = "location")
 
-# Convert "submitteddate" column to date type
+# Convert "submitteddate" column to date type.
 pg_foreclosures_with_tracts$submitteddate <- as.Date(pg_foreclosures_with_tracts$submitteddate, format = "%m/%d/%Y")
 
-# Extract the year and month from "submitteddate"
+# Extract the year and month from "submitteddate".
 pg_foreclosures_with_tracts$year <- year(pg_foreclosures_with_tracts$submitteddate)
 pg_foreclosures_with_tracts$month <- month(pg_foreclosures_with_tracts$submitteddate)
 
-# Create a year-month column for deduplication
+# Create a year-month column for deduplication.
 pg_foreclosures_with_tracts$year_month <- as.Date(paste(pg_foreclosures_with_tracts$year, pg_foreclosures_with_tracts$month, "01", sep = "-"), format = "%Y-%m-%d")
 
-# Print the dataset
-print(foreclosure_pg_census_tracts)
+# Print the dataset.
+print(pg_foreclosures_with_tracts)
 ```
+Unfortunately, the joining process produces tens of thousands of duplicates -- the result of duplicate addresses appearing in the original dataset. For some reason, this problem persists regardless of what type of join we use. 
+
+To remove those duplicates, we need to identify sets of duplicate rows using the values that will match within a set of duplicates: the values in the "street_address", "city.y" and "propertyid" columns. We will also use the "year_month" column to catch duplicate records that vary slightly in the "submitteddate" column -- a decision we make on the assumption that a single property cannot be foreclosed upon more than once in a single month. This step allows us to clean duplicate records that existed in the original dataset as well as those created by the joining process. We will keep only a single record from each matching set.
+
 ```{r}
 # To cast a wide net, we create one version that identifies rows with matching values in the "street_address", "city.y", "propertyid", and "year" columns -- columns that consistently match from entry to entry.
 
-columns_wide <- c("street_address", "city.y", "propertyid", "year")
+columns_duplicate <- c("street_address", "city.y", "propertyid", "year_month")
 
-# To cast a narrower net, we create another version that identifies rows with matching values in the "street_address", "city.y", and "propertyid" columns, as well as the year_month column -- a column that may change within an otherwise matching set. 
+duplicates_logical <- duplicated(pg_foreclosures_with_tracts[columns_duplicate], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_duplicate])
 
-columns_narrow <- c("street_address", "city.y", "propertyid", "year_month")
-
-duplicates_logical_wide <- duplicated(pg_foreclosures_with_tracts[columns_wide], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_wide])
-
-duplicates_logical_narrow <- duplicated(pg_foreclosures_with_tracts[columns_narrow], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_narrow])
 
 # Subset the original dataset using the wide and narrow duplicate vectors to get the duplicate rows
-duplicates_wide <- subset(pg_foreclosures_with_tracts, duplicates_logical_wide)
-
-duplicates_narrow <- subset(pg_foreclosures_with_tracts, duplicates_logical_narrow)
+duplicates_logical_filtered <- subset(pg_foreclosures_with_tracts, duplicates_logical)
 
 # Arrange the rows to consolidate matching groups.
-duplicates_wide <- arrange(duplicates_wide, street_address, city.y, propertyid, year)
+duplicates_logical_filtered <- arrange(duplicates_logical_filtered, street_address, city.y, propertyid, year)
 
-duplicates_narrow <- arrange(duplicates_narrow, street_address, city.y, propertyid, year_month)
-
-rows_to_keep_narrow <- distinct(duplicates_narrow, .keep_all = TRUE)
+# Keep only a single record from each set of duplicates.
+rows_to_keep <- distinct(duplicates_logical_filtered, .keep_all = FALSE)
 ```
 
-```{r}
-missing <- anti_join(duplicates_narrow, duplicates_wide, by = c("propertyid"))
-```
+As a next step in the cleaning process, we remove all sets of duplicate records from the pg_foreclosures_with_tracts dataset, using the same combination of rows ("street_address", "city.y", "propertyid", and "year_month") to identify the duplicates.
 
 ```{r}
-rows_to_keep_narrow <- distinct(duplicates_narrow, .keep_all = TRUE)
+# Use anti_join to remove duplicate records from the pg_foreclosures_with_tracts dataset.
+
+pg_foreclosures_filtered <- anti_join(pg_foreclosures_with_tracts, duplicates_logical_filtered, by = c("street_address", "city.y", "propertyid", "year_month"))
 ```
 
-```{r}
-pg_foreclosures_filtered <- anti_join(pg_foreclosures_with_tracts, duplicates_wide, by = c("street_address", "city.y", "propertyid", "year_month"))
-```
+We can then add the de-duplicated records back to the foreclosures dataset. This returns us to roughly the same number of foreclosure records in the original dataset, minus some duplicates.
 
 ```{r}
-pg_foreclosures_filtered <- bind_rows(pg_foreclosures_filtered, rows_to_keep_narrow)
+# Bind the de-duplicated rows to the foreclosure dataset.
+pg_foreclosures_filtered <- bind_rows(pg_foreclosures_filtered, rows_to_keep)
 ```
 
+Because we need to group by census tract, we now remove any records that are missing a value in the census tract code column. 
+
 ```{r}
+# Filter the pg_foreclosures_filtered dataset to remove rows with missing values in the census_tract_code column. 
 pg_foreclosures_filtered <- pg_foreclosures_filtered[!is.na(pg_foreclosures_filtered$census_tract_code), ]
 ```
 
+We can clean up our dataset by removing extraneous columns created by Geocodio.
 ```{r}
+# Remove unnecessary columns with the select() function.
 pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -full_fips_block)
 ```
 
+Next, we remove all records for addresses outside of Maryland. 
+
 ```{r}
+# Remove non-Maryland addresses from the dataset.
 pg_foreclosures_filtered <- pg_foreclosures_filtered |>
   filter(state.x == "MD")
 ```
 
+With only Maryland addresses remaining, we can group by census tract identification code and use the joining process with American Community Survey data to continue the cleaning process later.
+
 ```{r}
+# Group by census_tract_code and summarize to count the number of foreclosures per tract.
 pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
   group_by(census_tract_code) |>
   summarize(foreclosure_count = n())
 ```
 
+
+The independent variables we will need for our predictive model will come from the American Community Survey (ACS). To access ACS data, we use a Census API key -- stored locally for security. 
+
+As a building block for per capita calculations, we need the population of each census tract as of the 2016-2020 ACS. Because the variable codes for the 2020 Census are harder to search, we will rely on the ACS instead of the Census. 
+
+The B01003_001 variable represents total population.
 ```{r}
-#Grab population by md tract
+#Grab population by Maryland tract using American Community Survey API.
 md_tract_pop_2020 <- get_acs(geography = "tract",
               variables = c(tract_pop = "B01003_001"),
               state = "MD",
               year = 2020,
               geometry = TRUE)
 
-#Drop state ID # and county code prefixes from the tract ID # in the GEOID column.
 ```
+We only need tracts in Prince George's County, so we can use the "NAME" column from the ACS data to filter out tracts in other counties. The ACS data appends the Maryland state identification number (24) and the Prince George's County identification number (033) to the beginning of each tract identification number, so we also need to create a new column for the stand-alone tract identification numbers.
 
 ```{r}
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
 pg_tract_pop_2020 <- md_tract_pop_2020[str_detect(md_tract_pop_2020$NAME, "Prince George"), ]
 
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
 pg_tract_pop_2020$tract_number <- gsub('24033', '', pg_tract_pop_2020$GEOID)
 ```
 
@@ -244,3 +263,22 @@ md_medage_2020 <- get_acs(geography = "tract",
               state = "MD",
               year = 2020)
 ```
+```{r}
+md_nhwhite_2010 <- get_acs(geography = "tract", state="MD",
+  variables = c(nhwhite_2010 = "B03002_003E"), year = 2010)
+```
+
+```{r}
+md_nhwhite_2020 <- get_acs(geography = "tract", state="MD",
+  variables = c(nhwhite_2020 = "B03002_003E"), year = 2020)
+```
+
+
+```{r}
+md_foreclosure_with_zip_pop_and_housing <- left_join(md_foreclosure_with_zip_pop, md_total_housing, by=c("zip" = "GEOID")) |>
+  rename(total_housing_units = estimate)
+```
+
+
+
+
