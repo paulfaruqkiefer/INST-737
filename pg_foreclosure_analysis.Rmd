@@ -19,14 +19,23 @@ options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
 library(tidyverse)
+#Necessary for date parsing.
 library(lubridate)
+#Necessary for column name cleaning.
 library(janitor)
+#Eventually necessary for visualization
 library(ggthemes)
+#Necessary for Census API calls.
 library(tidycensus)
+#Eventually necessary for visualizations.
 library(ggplot2)
+#Potentially necessary for cleaning.
 library(ggrepel)
+#Eventually necessary for visualizations.
 library(tigris)
+#Simple features.
 library(sf)
+#Eventually necessary for mapping.
 library(ggmap)
 ```
 
@@ -47,6 +56,7 @@ foreclosure_pg_census_tracts <- read_csv("datasets/pg_foreclosure_tract_geocodio
 For our eventual predictive analysis, we want a sample of at least 100 census tracts to improve the accuracy of our model. We can use the unique() function to count the number of unique tract codes in the pg_foreclosure_census_tracts dataframe.
 
 ```{r}
+# Calculate the number of unique tracts in the geocoded address dataframe.
 tracts_unique <- length(unique(foreclosure_pg_census_tracts$census_tract_code))
 
 print(tracts_unique)
@@ -451,7 +461,7 @@ pg_foreclosures_per_tract <- left_join(pg_medhouseholdincome_2020_tract, pg_fore
 We join the core dataset with the data on the number of housing units per tract:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-2010 ACS housing unit data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_total_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_housingunits_2010 = estimate) |>
@@ -460,7 +470,7 @@ pg_foreclosures_per_tract <- left_join(pg_total_housing_2010, pg_foreclosures_pe
 ```
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2011-2015 ACS housing unit data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_total_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_housingunits_2015 = estimate) |>
@@ -469,7 +479,7 @@ pg_foreclosures_per_tract <- left_join(pg_total_housing_2015, pg_foreclosures_pe
 ```
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS housing unit data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_total_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_housingunits_2020 = estimate) |>
@@ -480,7 +490,7 @@ pg_foreclosures_per_tract <- left_join(pg_total_housing_2020, pg_foreclosures_pe
 We join the core dataset with the data on the number of owner-occupied housing units per tract:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-2010 ACS owner-occupied housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_owner_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_owneroccupied_2010 = estimate) |>
@@ -489,7 +499,7 @@ pg_foreclosures_per_tract <- left_join(pg_owner_housing_2010, pg_foreclosures_pe
 ```
 
 ```{r}
-# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2011-2015 ACS owner-occupied housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_owner_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_owneroccupied_2015 = estimate) |>
@@ -498,7 +508,7 @@ pg_foreclosures_per_tract <- left_join(pg_owner_housing_2015, pg_foreclosures_pe
 ```
 
 ```{r}
-# Left join the 2016-2020 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS owner-occupied housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_owner_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_owneroccupied_2020 = estimate) |>
@@ -509,7 +519,7 @@ pg_foreclosures_per_tract <- left_join(pg_owner_housing_2020, pg_foreclosures_pe
 We join the core dataset with the data on the number of mortgaged housing units per tract:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-2010 ACS mortgaged housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_debt_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_mortgaged_2010 = estimate) |>
@@ -518,7 +528,7 @@ pg_foreclosures_per_tract <- left_join(pg_debt_housing_2010, pg_foreclosures_per
 ```
 
 ```{r}
-# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2011-2015 ACS mortgaged housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_debt_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_mortgaged_2015 = estimate) |>
@@ -527,7 +537,7 @@ pg_foreclosures_per_tract <- left_join(pg_debt_housing_2015, pg_foreclosures_per
 ```
 
 ```{r}
-# Left join the 2016-2020 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS mortgaged housing data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_debt_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_mortgaged_2020 = estimate) |>
@@ -538,7 +548,7 @@ pg_foreclosures_per_tract <- left_join(pg_debt_housing_2020, pg_foreclosures_per
 We join the core dataset with the data on the median age of residents by tract:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-2010 ACS median age data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_medage_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_medage_2020 = estimate) |>
@@ -549,7 +559,7 @@ pg_foreclosures_per_tract <- left_join(pg_medage_2020, pg_foreclosures_per_tract
 We join the core dataset with the data on the number of residents identified as non-Hispanic white per tract:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-20210 ACS non-Hispanic white population data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_nhwhite_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_nhwhite_2010 = estimate) |>
@@ -558,7 +568,7 @@ pg_foreclosures_per_tract <- left_join(pg_nhwhite_2010, pg_foreclosures_per_trac
 ```
 
 ```{r}
-# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS non-Hispanic white population data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_nhwhite_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_nhwhite2020 = estimate) |>
@@ -570,7 +580,7 @@ pg_foreclosures_per_tract <- left_join(pg_nhwhite_2020, pg_foreclosures_per_trac
 We join the core dataset with the data on the number of residents (age >5) with an income below the poverty level in the previous 12 months:
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2006-2010 ACS poverty data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_poverty_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_poverty_2010 = estimate) |>
@@ -579,7 +589,7 @@ pg_foreclosures_per_tract <- left_join(pg_poverty_2010, pg_foreclosures_per_trac
 ```
 
 ```{r}
-# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS poverty data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_poverty_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_poverty_2020 = estimate) |>
@@ -587,10 +597,10 @@ pg_foreclosures_per_tract <- left_join(pg_poverty_2020, pg_foreclosures_per_trac
   select(-NAME, -variable, -GEOID.x.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x.x, -GEOID.y, -moe.y, -GEOID.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x, - GEOID.y.y, -moe.y.y, -GEOID.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x, -GEOID.y.y.y, -moe.y.y.y, -GEOID.x.x.x.x.x, -moe.x.x.x.x.x.x, -GEOID.y.y.y.y, -moe.y.y.y.y, -GEOID.x.x.x.x, -moe.x.x.x.x.x, -GEOID.y.y.y.y.y, -moe.y.y.y.y.y, -GEOID.x, -moe.x.x.x.x, -GEOID.y.y.y.y.y.y, -moe.y.y.y.y.y.y, -GEOID.x.x.x, -moe.x.x.x, -GEOID.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y, -GEOID.x.x, -moe.x.x, -GEOID.y.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y.y, -moe.x) 
 ```
 
-We join the core dataset with the data on the median reported value of homes in a given tract from the 2016-2020 ACS:
+We join the core dataset with the data on the self-reported median reported value of homes in a given tract from the 2016-2020 ACS. Because this datapoint is self-reported, it is certainly less accurate than the Maryland tax assessment data, which we would use absent storage and cost restraints.
 
 ```{r}
-# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+# Left join the 2016-2020 ACS self-reported median home value data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_homevalue_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
   rename(tract_homevalue_2020 = estimate) |>
@@ -640,9 +650,16 @@ The last filter pares our dataset down to 173 rows -- still over the 100-tract t
 To visualize the distribution of our dependent variable and identify possible outliers, we can plot a histogram of foreclosure rates per 1,000 residents for each remaining census tract in our dataset.
 
 ```{r}
+#Calculate quintiles
+quintiles <- quantile(pg_foreclosures_per_tract$foreclosure_pc_2020, probs = seq(0, 1, by = 0.25))
+
+#Plot the distribution of foreclosure per capita values
 hist(pg_foreclosures_per_tract$foreclosure_pc_2020, 
-     main = "Distribution of per capita foreclosure rates by census tract",
-     xlab = "Foreclosures per 1,000 residents at the census tract level",
-     ylab = "Frequency")
+     main = "Distribution of Per Capita Foreclosure Rates by Census Tract",
+     xlab = "Foreclosures per 1,000 Residents by Census Tract",
+     ylab = "Number of Census Tracts")
+
+# Add vertical lines for quintiles
+abline(v = quintiles, col = "red", lty = 2)
 ```
 
