@@ -636,3 +636,13 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract[!is.na(pg_foreclosures_pe
 ```
 
 The last filter pares our dataset down to 173 rows -- still over the 100-tract threshold, but close enough that we will need to be mindful when creating test sets. 
+
+To visualize the distribution of our dependent variable and identify possible outliers, we can plot a histogram of foreclosure rates per 1,000 residents for each remaining census tract in our dataset.
+
+```{r}
+hist(pg_foreclosures_per_tract$foreclosure_pc_2020, 
+     main = "Distribution of per capita foreclosure rates by census tract",
+     xlab = "Foreclosures per 1,000 residents at the census tract level",
+     ylab = "Frequency")
+```
+
