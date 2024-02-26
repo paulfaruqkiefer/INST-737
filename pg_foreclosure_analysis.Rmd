@@ -513,3 +513,85 @@ pg_foreclosures_per_tract <- left_join(pg_owner_housing_2020, pg_foreclosures_pe
   #Remove extraneous columns.
   select(-NAME, -variable) 
 ```
+
+We join the core dataset with the data on the number of mortgaged housing units per tract:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_debt_housing_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_mortgaged_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_debt_housing_2015, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_mortgaged_2015 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2016-2020 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_debt_housing_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_mortgaged_2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+We join the core dataset with the data on the median age of residents by tract:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_medage_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_medage_2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+We join the core dataset with the data on the number of residents identified as non-Hispanic white per tract:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_nhwhite_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_nhwhite_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_nhwhite_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_nhwhite2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+
+We join the core dataset with the data on the number of residents (age >5) with an income below the poverty level in the previous 12 months:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_poverty_2010, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_poverty_2010 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+```{r}
+# Left join the 2011-2015 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_poverty_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_poverty_2020 = estimate) |>
+  #Remove extraneous columns, taking the opportunity to clear the extraneous columns that have accumulated during the joining process. 
+  select(-NAME, -variable, -GEOID.x.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x.x, -GEOID.y, -moe.y, -GEOID.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x, - GEOID.y.y, -moe.y.y, -GEOID.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x, -GEOID.y.y.y, -moe.y.y.y, -GEOID.x.x.x.x.x, -moe.x.x.x.x.x.x, -GEOID.y.y.y.y, -moe.y.y.y.y, -GEOID.x.x.x.x, -moe.x.x.x.x.x, -GEOID.y.y.y.y.y, -moe.y.y.y.y.y, -GEOID.x, -moe.x.x.x.x, -GEOID.y.y.y.y.y.y, -moe.y.y.y.y.y.y, -GEOID.x.x.x, -moe.x.x.x, -GEOID.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y, -GEOID.x.x, -moe.x.x, -GEOID.y.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y.y, -moe.x) 
+```
+
