@@ -423,6 +423,19 @@ pg_poverty_2020 <- md_poverty_2020[str_detect(md_poverty_2020$NAME, "Prince Geor
 pg_poverty_2020$tract_number <- gsub('24033', '', pg_poverty_2020$GEOID)
 ```
 
+Lastly, we will use the ACS API to pull the median reported home value from the 2016-2020 ACS at the tract level. This is an imperfect measure because it is self-reported, but given that we cannot afford to generate tract identification numbers for all properties listed in the Prince George's County real estate assessment value dataset, it is the second-best approximation of home value available to us.
+
+```{r}
+md_homevalue_2020 <- get_acs(geography = "tract", state="MD",
+  variables = c(homevalue_2020 = "B25107_001E"), year = 2020)
+
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_homevalue_2020 <- md_homevalue_2020[str_detect(md_homevalue_2020$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_homevalue_2020$tract_number <- gsub('24033', '', pg_homevalue_2020$GEOID)
+```
+
 At last, we can begin joining the ACS data to our core dataset. 
 
 
@@ -595,3 +608,52 @@ pg_foreclosures_per_tract <- left_join(pg_poverty_2020, pg_foreclosures_per_trac
   select(-NAME, -variable, -GEOID.x.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x.x, -GEOID.y, -moe.y, -GEOID.x.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x.x, - GEOID.y.y, -moe.y.y, -GEOID.x.x.x.x.x.x, -moe.x.x.x.x.x.x.x, -GEOID.y.y.y, -moe.y.y.y, -GEOID.x.x.x.x.x, -moe.x.x.x.x.x.x, -GEOID.y.y.y.y, -moe.y.y.y.y, -GEOID.x.x.x.x, -moe.x.x.x.x.x, -GEOID.y.y.y.y.y, -moe.y.y.y.y.y, -GEOID.x, -moe.x.x.x.x, -GEOID.y.y.y.y.y.y, -moe.y.y.y.y.y.y, -GEOID.x.x.x, -moe.x.x.x, -GEOID.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y, -GEOID.x.x, -moe.x.x, -GEOID.y.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y.y, -moe.x) 
 ```
 
+We join the core dataset with the data on the median reported value of homes in a given tract from the 2016-2020 ACS:
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_homevalue_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Rename the "estimate" variable
+  rename(tract_homevalue_2020 = estimate) |>
+  #Remove extraneous columns.
+  select(-NAME, -variable) 
+```
+
+Outside of this markdown, one of our team members created a spreadsheet containing the number of units built in each decade from 1940 to 1920, with columns for units built before 1939 and after 2020, and the average number of bedrooms per house. 
+
+We will read that .csv file in and append it to the core dataset after adjusting the new dataframe's "tract" column to match the "tract_number" column in the pg_foreclosures_by_tract dataset.
+
+
+```{r}
+#Read in the geocoded construction year and median bedroom number dataset. 
+
+pg_yr_bd_avg_tract <- read_csv("datasets/pg_yr_bd_avg_tract.csv", guess_max = 214) |>
+  clean_names()
+```
+We use the gsub() and substr() functions to extract tract numbers from strings in the "tract" column of the new dataset.
+
+```{r}
+# Extract the digits from the strings in the "tract" column of the pg_yr_bd_avg_tract dataset
+pg_yr_bd_avg_tract$tract_number <- gsub("[^0-9]", "", pg_yr_bd_avg_tract$tract)
+
+# Extract the first four digits followed by the two digits after the period
+pg_yr_bd_avg_tract$tract_number <- substr(pg_yr_bd_avg_tract$tract_number, 1, 6)
+
+# Showing the updated dataframe
+print(pg_yr_bd_avg_tract)
+```
+
+```{r}
+# Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
+pg_foreclosures_per_tract <- left_join(pg_yr_bd_avg_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
+  #Remove extraneous columns.
+  select(-GEOID, -moe, -moe.y.y.y.y.y.y.y.y.y, -avg_year_built_number, -avg_year_built, -tract) 
+```
+
+Finally, because our dependent variable is foreclosures per capita based on the 2016-2020 ACS population estimates, we can filter out dataset to exclude rows with missing values in the foreclosure_pc_2020 column. 
+
+```{r}
+pg_foreclosures_per_tract <- pg_foreclosures_per_tract[!is.na(pg_foreclosures_per_tract$foreclosure_pc_2020), ]
+```
+
+The last filter pares our dataset down to 173 rows -- still over the 100-tract threshold, but close enough that we will need to be mindful when creating test sets. 
