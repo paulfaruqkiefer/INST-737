@@ -77,22 +77,17 @@ Unfortunately, the joining process produces tens of thousands of duplicates -- t
 To remove those duplicates, we need to identify sets of duplicate rows using the values that will match within a set of duplicates: the values in the "street_address", "city.y" and "propertyid" columns. We will also use the "year_month" column to catch duplicate records that vary slightly in the "submitteddate" column -- a decision we make on the assumption that a single property cannot be foreclosed upon more than once in a single month. This step allows us to clean duplicate records that existed in the original dataset as well as those created by the joining process. We will keep only a single record from each matching set.
 
 ```{r}
-# To cast a wide net, we create one version that identifies rows with matching values in the "street_address", "city.y", "propertyid", and "year" columns -- columns that consistently match from entry to entry.
+# Order the dataframe by the columns that identify remainins duplicate rows.
 
-columns_duplicate <- c("street_address", "city.y", "propertyid", "year_month")
+pg_foreclosures_with_tracts <- pg_foreclosures_with_tracts[order(pg_foreclosures_with_tracts$propertyid, pg_foreclosures_with_tracts$street_address, pg_foreclosures_with_tracts$city.y, pg_foreclosures_with_tracts$year_month), ]
 
-duplicates_logical <- duplicated(pg_foreclosures_with_tracts[columns_duplicate], fromLast = TRUE) | duplicated(pg_foreclosures_with_tracts[columns_duplicate])
+# Keep only the last row from each set of duplicates
+pg_foreclosures_with_tracts <- subset(pg_foreclosures_with_tracts, !duplicated(pg_foreclosures_with_tracts[, c("propertyid", "street_address", "city.y", "year_month")], fromLast = TRUE))
 
-
-# Subset the original dataset using the wide and narrow duplicate vectors to get the duplicate rows
-duplicates_logical_filtered <- subset(pg_foreclosures_with_tracts, duplicates_logical)
-
-# Arrange the rows to consolidate matching groups.
-duplicates_logical_filtered <- arrange(duplicates_logical_filtered, street_address, city.y, propertyid, year)
-
-# Keep only a single record from each set of duplicates.
-rows_to_keep <- distinct(duplicates_logical_filtered, .keep_all = FALSE)
+# Reset row names if necessary
+rownames(pg_foreclosures_with_tracts) <- NULL
 ```
+
 
 As a next step in the cleaning process, we remove all sets of duplicate records from the pg_foreclosures_with_tracts dataset, using the same combination of rows ("street_address", "city.y", "propertyid", and "year_month") to identify the duplicates.
 
