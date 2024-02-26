@@ -53,7 +53,7 @@ print(tracts_unique)
 ```
 While some of those tracts may be erroneous -- in another state, for instance -- we are comfortably above the 100-tract threshhold.
 
-We can now use an inner join to combine the original dataset with the address and tract dataset using the matching values in the "location" columns. We will also need year and year_month columns for future cleaning, so we add those here annd format them as date type. 
+We can now use an inner join to combine the original dataset with the address and tract dataset using the matching values in the "location" columns. We will also need year and year_month columns for future plotting, so we add those here and format them as date type. 
 
 ```{r}
 # Perform inner join based on the 'location' column.
@@ -66,7 +66,7 @@ pg_foreclosures_with_tracts$submitteddate <- as.Date(pg_foreclosures_with_tracts
 pg_foreclosures_with_tracts$year <- year(pg_foreclosures_with_tracts$submitteddate)
 pg_foreclosures_with_tracts$month <- month(pg_foreclosures_with_tracts$submitteddate)
 
-# Create a year-month column for deduplication.
+# Create a year-month column for eventual plotting.
 pg_foreclosures_with_tracts$year_month <- as.Date(paste(pg_foreclosures_with_tracts$year, pg_foreclosures_with_tracts$month, "01", sep = "-"), format = "%Y-%m-%d")
 
 # Print the dataset.
@@ -79,29 +79,13 @@ To remove those duplicates, we need to identify sets of duplicate rows using the
 ```{r}
 # Order the dataframe by the columns that identify remainins duplicate rows.
 
-pg_foreclosures_with_tracts <- pg_foreclosures_with_tracts[order(pg_foreclosures_with_tracts$propertyid, pg_foreclosures_with_tracts$street_address, pg_foreclosures_with_tracts$city.y, pg_foreclosures_with_tracts$year_month), ]
+pg_foreclosures_with_tracts <- pg_foreclosures_with_tracts[order(pg_foreclosures_with_tracts$propertyid, pg_foreclosures_with_tracts$street_address, pg_foreclosures_with_tracts$city.y, pg_foreclosures_with_tracts$submitteddate), ]
 
 # Keep only the last row from each set of duplicates
-pg_foreclosures_with_tracts <- subset(pg_foreclosures_with_tracts, !duplicated(pg_foreclosures_with_tracts[, c("propertyid", "street_address", "city.y", "year_month")], fromLast = TRUE))
+pg_foreclosures_filtered <- subset(pg_foreclosures_with_tracts, !duplicated(pg_foreclosures_with_tracts[, c("propertyid", "street_address", "city.y", "submitteddate")], fromLast = TRUE))
 
 # Reset row names if necessary
-rownames(pg_foreclosures_with_tracts) <- NULL
-```
-
-
-As a next step in the cleaning process, we remove all sets of duplicate records from the pg_foreclosures_with_tracts dataset, using the same combination of rows ("street_address", "city.y", "propertyid", and "year_month") to identify the duplicates.
-
-```{r}
-# Use anti_join to remove duplicate records from the pg_foreclosures_with_tracts dataset.
-
-pg_foreclosures_filtered <- anti_join(pg_foreclosures_with_tracts, duplicates_logical_filtered, by = c("street_address", "city.y", "propertyid", "year_month"))
-```
-
-We can then add the de-duplicated records back to the foreclosures dataset. This returns us to roughly the same number of foreclosure records in the original dataset, minus some duplicates.
-
-```{r}
-# Bind the de-duplicated rows to the foreclosure dataset.
-pg_foreclosures_filtered <- bind_rows(pg_foreclosures_filtered, rows_to_keep)
+rownames(pg_foreclosures_filtered) <- NULL
 ```
 
 Because we need to group by census tract, we now remove any records that are missing a value in the census tract code column. This removed roughly 120 records.
