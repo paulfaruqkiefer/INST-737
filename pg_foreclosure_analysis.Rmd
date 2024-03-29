@@ -108,7 +108,7 @@ pg_foreclosures_filtered <- pg_foreclosures_filtered[!is.na(pg_foreclosures_filt
 We can clean up our dataset by removing extraneous columns created by Geocodio.
 ```{r}
 # Remove unnecessary columns with the select() function.
-pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied, -full_fips_block)
+pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied)
 ```
 
 Next, we remove all records for addresses outside of Maryland. 
