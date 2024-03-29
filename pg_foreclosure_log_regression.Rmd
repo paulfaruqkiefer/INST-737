@@ -1,0 +1,50 @@
+---
+title: "pg_logistic_regression"
+author: "Paul Kiefer"
+date: "2024-03-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This is the markdown for our attempts to predict the likelihood of foreclosure at the tract level using logistic regression.
+
+## Data Setup
+
+Load libraries.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+##install.packages("ggrepel")
+##install.packages('ggthemes')
+library(tidyverse)
+#Necessary for date parsing.
+library(lubridate)
+#Necessary for column name cleaning.
+library(janitor)
+#Eventually necessary for visualization
+library(ggthemes)
+#Necessary for Census API calls.
+library(tidycensus)
+#Eventually necessary for visualizations.
+library(ggplot2)
+#Potentially necessary for cleaning.
+library(ggrepel)
+#Eventually necessary for visualizations.
+library(tigris)
+#Simple features.
+library(sf)
+#Eventually necessary for mapping.
+library(ggmap)
+```
+
+We read in our cleaned and combined dataset.
+
+```{r}
+# Read in the initial dataset, setting a guess_max limit to improve the accuracy of the data types assigned to each column.
+pg_foreclosures_per_tract <- read_csv("datasets/pg_foreclosures_per_tract.csv", guess_max = 173)
+```
+

@@ -125,23 +125,31 @@ With only Maryland addresses remaining, we can group by census tract identificat
 # Group by census_tract_code and summarize to count the number of foreclosures per tract.
 pg_foreclosures_per_tract <- pg_foreclosures_filtered |>
   group_by(census_tract_code) |>
-  summarize(foreclosure_count = n())
+  summarize(
+    great_recession_foreclosures = sum(year <= 2010, na.rm = TRUE),
+    post_2010_foreclosures = sum(year > 2010, na.rm = TRUE)
+  )
 ```
 
 
 The independent variables we will need for our predictive model will come from the American Community Survey (ACS). To access ACS data, we use a Census API key -- stored locally for security. 
 
-As a building block for per capita calculations, we need the population of each census tract as of the 2016-2020 ACS. Because the variable codes for the 2020 Census are harder to search, we will rely on the ACS instead of the Census. 
+As a building block for per capita calculations, we need the population of each census tract as of the 2016-2020 ACS and the 2006-2010 ACS. Because the variable codes for the 2020 Census are harder to search, we will rely on the ACS instead of the Census. 
 
 The B01003_001 variable represents total population.
 ```{r}
-#Grab population by Maryland tract using American Community Survey API.
+#Grab 2020 population by Maryland tract using American Community Survey API.
 md_tract_pop_2020 <- get_acs(geography = "tract",
               variables = c(tract_pop = "B01003_001"),
               state = "MD",
               year = 2020,
               geometry = TRUE)
 
+md_tract_pop_2010 <- get_acs(geography = "tract",
+              variables = c(tract_pop = "B01003_001"),
+              state = "MD",
+              year = 2010,
+              geometry = TRUE)
 ```
 We only need tracts in Prince George's County, so we can use the "NAME" column from the ACS data to filter out tracts in other counties. The ACS data appends the Maryland state identification number (24) and the Prince George's County identification number (033) to the beginning of each tract identification number, so we also need to create a new column for the stand-alone tract identification numbers.
 
@@ -162,8 +170,34 @@ pg_foreclosures_per_tract <- left_join(pg_tract_pop_2020, pg_foreclosures_per_tr
   rename(tract_pop_2020 = estimate) |>
   #Remove extraneous columns.
   select(-NAME, -variable) |> 
-  #Add foreclosures per capita column using 2020 ACS population estimate.
-  mutate(foreclosure_pc_2020 = (foreclosure_count/tract_pop_2020)*1000)
+  #Add a column for post-great recession foreclosures per capita using 2020 ACS population estimate.
+  mutate(foreclosure_pc_2020 = (post_2010_foreclosures/tract_pop_2020)*1000)
+```
+
+We also need to join the dataset with the tract population estimates from the 2006-2010 ACS. Because new tracts may have been added since 2010, we left-join to retain as much data as possible from 2020.
+
+```{r}
+# Use the str_detect function and the string "Prince George" to isolate tracts in Prince George's County.
+pg_tract_pop_2010 <- md_tract_pop_2010[str_detect(md_tract_pop_2010$NAME, "Prince George"), ]
+
+# Use the gsub function to remove the '24033' prefix from census tract identification numbers and save the results in a new 'tract_number' column. 
+pg_tract_pop_2010$tract_number <- gsub('24033', '', pg_tract_pop_2010$GEOID)
+```
+
+Because both the 2006-2010 tract population estimates dataset and the new foreclosures per capita dataset have geometries associated with each tract, they are sf objects. The join function for sf objects, st_join, requires us to join by geometry, but geometries for census tracts can change slightly over time. This, of course, makes it difficult to be completely precise, but it appears that only four new tracts in PG county appeared between 2010 and 2016, so it introduces only a minor inconsistency into our dataset.
+
+Regardless, we need to convert the sf objects to standard dataframes so that we can join by tract number, not geometry -- joining by geometry would give us multiple records for each version of the geometry.
+
+```{r}
+# Convert sf objects to data frames
+pg_tract_pop_df <- as.data.frame(pg_tract_pop_2010)
+pg_foreclosures_df <- as.data.frame(pg_foreclosures_per_tract)
+
+# Perform left join based on "tract_number" column
+pg_foreclosures_per_tract<- left_join(pg_tract_pop_df, pg_foreclosures_df, by = c("tract_number" = "tract_number"))
+
+# Rename the "estimate" variable
+pg_foreclosures_per_tract <- rename(pg_foreclosures_per_tract, tract_pop_2010 = estimate)
 ```
 
 
@@ -434,9 +468,7 @@ We start by joining the core dataset with the data on median household income by
 # Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_medhouseholdincome_2010_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
-  rename(tract_medincome_2010 = estimate) |>
-  #Remove extraneous columns.
-  select(-NAME, -variable, -GEOID.y) 
+  rename(tract_medincome_2010 = estimate)
 ```
 
 ```{r}
@@ -571,7 +603,7 @@ pg_foreclosures_per_tract <- left_join(pg_nhwhite_2010, pg_foreclosures_per_trac
 # Left join the 2016-2020 ACS non-Hispanic white population data from the ACS with the pg_foreclosures_per_tract dataset.
 pg_foreclosures_per_tract <- left_join(pg_nhwhite_2020, pg_foreclosures_per_tract, by=c("tract_number")) |>
   #Rename the "estimate" variable
-  rename(tract_nhwhite2020 = estimate) |>
+  rename(tract_nhwhite_2020 = estimate) |>
   #Remove extraneous columns.
   select(-NAME, -variable) 
 ```
@@ -634,9 +666,7 @@ print(pg_yr_bd_avg_tract)
 
 ```{r}
 # Left join the 2006-2010 ACS median household income data from the ACS with the pg_foreclosures_per_tract dataset.
-pg_foreclosures_per_tract <- left_join(pg_yr_bd_avg_tract, pg_foreclosures_per_tract, by=c("tract_number")) |>
-  #Remove extraneous columns.
-  select(-GEOID, -moe, -moe.y.y.y.y.y.y.y.y.y, -avg_year_built_number, -avg_year_built, -tract) 
+pg_foreclosures_per_tract <- left_join(pg_yr_bd_avg_tract, pg_foreclosures_per_tract, by=c("tract_number"))
 ```
 
 Finally, because our dependent variable is foreclosures per capita based on the 2016-2020 ACS population estimates, we can filter out dataset to exclude rows with missing values in the foreclosure_pc_2020 column. 
@@ -661,5 +691,55 @@ hist(pg_foreclosures_per_tract$foreclosure_pc_2020,
 
 # Add vertical lines for quintiles
 abline(v = quintiles, col = "red", lty = 2)
+```
+We now need to calculate percentage figures for each of the variables we have added to the dataset for a more straightforward comparison.
+
+```{r}
+pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
+  mutate(pct_built_2020_later = year_structure_built_total_housing_units_built_2020_or_later / year_structure_built_total_housing_units) |>
+  mutate(pct_built_2010_2019 = year_structure_built_total_housing_units_built_2010_to_2019 / year_structure_built_total_housing_units) |>
+  mutate(pct_built_2000_2009 = year_structure_built_total_housing_units_built_2000_to_2009 / year_structure_built_total_housing_units) |>
+  mutate(pct_built_1990_1999 = year_structure_built_total_housing_units_built_1990_to_1999 / year_structure_built_total_housing_units) |>
+  mutate(pct_built_1980_1989 = year_structure_built_total_housing_units_built_1980_to_1989 / year_structure_built_total_housing_units) |>
+  mutate(pct_built_1970_1979 = year_structure_built_total_housing_units_built_1970_to_1979 / year_structure_built_total_housing_units) |>
+  mutate(pct_built_pre_1960 = (year_structure_built_total_housing_units_built_1960_to_1969 + year_structure_built_total_housing_units_built_1950_to_1959 + year_structure_built_total_housing_units_built_1940_to_1949 + year_structure_built_total_housing_units_built_1939_or_earlier) / year_structure_built_total_housing_units) |>
+  mutate(pct_0_bd = bedrooms_total_housing_units_no_bedroom / bedrooms_total_housing_units) |>
+  mutate(pct_1_bd = bedrooms_total_housing_units_1_bedroom / bedrooms_total_housing_units) |>
+  mutate(pct_2_bd = bedrooms_total_housing_units_2_bedrooms / bedrooms_total_housing_units) |>
+  mutate(pct_3_bd = bedrooms_total_housing_units_3_bedrooms / bedrooms_total_housing_units) |>
+  mutate(pct_4_more_bd = (bedrooms_total_housing_units_4_bedrooms + bedrooms_total_housing_units_5_or_more_bedrooms) / bedrooms_total_housing_units) |>
+  mutate(poverty_2010 = tract_poverty_2010/ tract_pop_2010) |>
+  mutate(poverty_2020 = tract_poverty_2020/ tract_pop_2020) |>
+  mutate(nhwhite_2010 = tract_nhwhite_2010/ tract_pop_2010) |>
+  mutate(nhwhite_2020 = tract_nhwhite_2020/ tract_pop_2020) |>
+  mutate(mortgaged_2010 = tract_mortgaged_2010/tract_housingunits_2010) |>
+  mutate(mortgaged_2015 = tract_mortgaged_2015/tract_housingunits_2015) |>
+  mutate(mortgaged_2020 = tract_mortgaged_2020/tract_housingunits_2020) |>
+  mutate(ownoccupied_2010 = tract_owneroccupied_2010/tract_housingunits_2010) |>
+  mutate(ownoccupied_2015 = tract_owneroccupied_2015/tract_housingunits_2015) |>
+  mutate(ownoccupied_2020 = tract_owneroccupied_2020/tract_housingunits_2020) |>
+  mutate(mortgage_change_2010_2015 = mortgaged_2015-mortgaged_2010) |>
+  mutate(mortgage_change_2015_2020 = mortgaged_2020-mortgaged_2015) |>
+  mutate(mortgage_change_2010_2020 = mortgaged_2010-mortgaged_2020) |>
+  mutate(ownoccupied_change_2010_2015 = ownoccupied_2015-ownoccupied_2010) |>
+  mutate(ownoccupied_change_2015_2020 = ownoccupied_2020-ownoccupied_2015) |>
+  mutate(ownoccupied_change_2010_2020 = ownoccupied_2020-ownoccupied_2010) |>
+  mutate(poverty_change_2010_2020 = poverty_2020-poverty_2010) |>
+  mutate(nhwhite_change_2010_2020 = nhwhite_2020-nhwhite_2010) |>
+  mutate(medincome_change_2010_2015 = (tract_medincome_2015-tract_medincome_2010)/tract_medincome_2010) |>
+  mutate(medincome_change_2015_2020 = (tract_medincome_2020-tract_medincome_2015)/tract_medincome_2015) |>
+  mutate(medincome_change_2010_2020 = (tract_medincome_2020-tract_medincome_2010)/tract_medincome_2010) 
+```
+
+```{r}
+pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
+  select(-tract, -year_structure_built_total_housing_units, -year_structure_built_total_housing_units_built_1939_or_earlier, -year_structure_built_total_housing_units_built_1940_to_1949, -year_structure_built_total_housing_units_built_1950_to_1959, -year_structure_built_total_housing_units_built_1960_to_1969, -year_structure_built_total_housing_units_built_1970_to_1979, -year_structure_built_total_housing_units_built_1980_to_1989, -year_structure_built_total_housing_units_built_1990_to_1999, -year_structure_built_total_housing_units_built_2000_to_2009, -year_structure_built_total_housing_units_built_2010_to_2019, -year_structure_built_total_housing_units_built_2020_or_later, 
+-bedrooms_total_housing_units, -bedrooms_total_housing_units_1_bedroom, -bedrooms_total_housing_units_no_bedroom, -bedrooms_total_housing_units_2_bedrooms, -bedrooms_total_housing_units_3_bedrooms, -bedrooms_total_housing_units_4_bedrooms, -bedrooms_total_housing_units_5_or_more_bedrooms, -GEOID.x, -moe.x, -GEOID.y, -moe.y, -tract_poverty_2010, -tract_poverty_2020, -tract_nhwhite_2010, -tract_nhwhite_2020, -tract_mortgaged_2010, -tract_mortgaged_2015, -tract_mortgaged_2020, -tract_owneroccupied_2010, -tract_owneroccupied_2015, -tract_owneroccupied_2020, -tract_housingunits_2010, -tract_housingunits_2015, -tract_housingunits_2020, -tract_medincome_2015, -NAME.x, -variable.x, -NAME.y, -variable.y, -geometry.x, -geometry.y, -GEOID.y.y.y.y.y.y.y.y.y, -moe.y.y.y.y.y.y.y.y.y, -avg_year_built, -avg_year_built_number
+         )
+```
+
+
+```{r}
+##write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
