@@ -198,6 +198,10 @@ pg_foreclosures_per_tract<- left_join(pg_tract_pop_df, pg_foreclosures_df, by = 
 
 # Rename the "estimate" variable
 pg_foreclosures_per_tract <- rename(pg_foreclosures_per_tract, tract_pop_2010 = estimate)
+
+# Add a column for foreclosures per capita during the height of the great recession using 2010 ACS data.
+pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
+  mutate(foreclosure_pc_2010 = (great_recession_foreclosures/tract_pop_2010)*1000)
 ```
 
 
@@ -740,6 +744,6 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
 
 
 ```{r}
-##write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
+write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
