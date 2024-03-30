@@ -20,6 +20,8 @@ knitr::opts_chunk$set(echo = TRUE)
 options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
+##install.packages('aod')
+##install.packages('caret')
 library(tidyverse)
 #Necessary for date parsing.
 library(lubridate)
@@ -39,6 +41,10 @@ library(tigris)
 library(sf)
 #Eventually necessary for mapping.
 library(ggmap)
+#needed for logistic regression
+library(aod)
+#needed for splitting into training and test datasets
+library(caret)
 ```
 
 We read in our cleaned and combined dataset.
@@ -46,5 +52,36 @@ We read in our cleaned and combined dataset.
 ```{r}
 # Read in the initial dataset, setting a guess_max limit to improve the accuracy of the data types assigned to each column.
 pg_foreclosures_per_tract <- read_csv("datasets/pg_foreclosures_per_tract.csv", guess_max = 173)
+```
+
+```{r}
+# Create a new column "foreclosure_quantile" based on quantiles of foreclosure_pc_2020
+pg_foreclosures_per_tract_log_reg <- pg_foreclosures_per_tract %>%
+  mutate(foreclosure_quantile = ntile(foreclosure_pc_2020, 5))
+```
+
+
+```{r}
+# Set the seed for reproducibility
+set.seed(123)
+
+# Split the data into 70% training and 30% test sets
+train_index <- createDataPartition(pg_foreclosures_per_tract_log_reg$foreclosure_quantile, p = 0.7, list = FALSE)
+
+# Create training and test sets
+train_data <- pg_foreclosures_per_tract_log_reg[train_index, ]
+test_data <- pg_foreclosures_per_tract_log_reg[-train_index, ]
+
+# Check the dimensions of training and test sets
+dim(train_data)
+dim(test_data)
+```
+
+```{r}
+# Fit multivariate logistic regression model using training data
+model <- glm(foreclosure_quantile ~ x1 + x2 + ... + xn, data = train_data, family = "binomial")
+
+# Summarize the model
+summary(model)
 ```
 
