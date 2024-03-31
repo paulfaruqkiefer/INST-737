@@ -22,6 +22,9 @@ options(scipen=999)
 ##install.packages('ggthemes')
 ##install.packages('aod')
 ##install.packages('caret')
+##install.packages("MASS")
+##install.packages("mice")
+
 library(tidyverse)
 #Necessary for date parsing.
 library(lubridate)
@@ -43,8 +46,12 @@ library(sf)
 library(ggmap)
 #needed for logistic regression
 library(aod)
-#needed for splitting into training and test datasets
+#Needed for splitting into training and test datasets
 library(caret)
+#Needed for ordinal logistic regression
+library(MASS)
+#Needed for imputing missing values (using predictive mean matching)
+library(mice)
 ```
 
 We read in our cleaned and combined dataset.
@@ -78,8 +85,14 @@ dim(test_data)
 ```
 
 ```{r}
-# Fit multivariate logistic regression model using training data
-model <- glm(foreclosure_quantile ~ x1 + x2 + ... + xn, data = train_data, family = "binomial")
+# Convert foreclosure_quantile to factor
+train_data$foreclosure_quantile <- factor(train_data$foreclosure_quantile)
+
+# Impute missing values in the dataset
+imputed_data <- mice(train_data, m = 5, method = "pmm")
+
+# Use the imputed dataset for model fitting
+model <- polr(foreclosure_quantile ~ medincome_change_2010_2020 + tract_medincome_2020 + tract_medage_2020 + nhwhite_change_2010_2020 + mortgage_change_2010_2020 + mortgaged_2020 + pct_built_pre_1960 + great_recession_foreclosures, data = imputed_data, Hess = TRUE)
 
 # Summarize the model
 summary(model)
