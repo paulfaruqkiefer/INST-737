@@ -744,6 +744,14 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
 
 
 ```{r}
+# Create vector to count missing values by column. 
+missing_values_count <- colSums(is.na(pg_foreclosures_per_tract))
+
+# Print the number of missing values in each column
+print(missing_values_count)
+```
+
+```{r}
 write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
