@@ -19,6 +19,7 @@ options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
 library(tidyverse)
+library(dplyr)
 #Necessary for date parsing.
 library(lubridate)
 #Necessary for column name cleaning.
@@ -108,7 +109,8 @@ pg_foreclosures_filtered <- pg_foreclosures_filtered[!is.na(pg_foreclosures_filt
 We can clean up our dataset by removing extraneous columns created by Geocodio.
 ```{r}
 # Remove unnecessary columns with the select() function.
-pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied)
+pg_foreclosures_filtered <- pg_foreclosures_filtered %>%
+  select(-accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied)
 ```
 
 Next, we remove all records for addresses outside of Maryland. 
@@ -750,6 +752,14 @@ missing_values_count <- colSums(is.na(pg_foreclosures_per_tract))
 # Print the number of missing values in each column
 print(missing_values_count)
 ```
+Because there are only three missing values in the tract_homevalue_2020 column -- and nowhere else in the dataset -- we can impute the missing values using the median home value for PG county with relatively little impact.
+
+```{r}
+# Replace missing values in tract_homevalue_2020 with the mean of the column
+mean_value <- mean(pg_foreclosures_per_tract$tract_homevalue_2020, na.rm = TRUE)
+pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$tract_homevalue_2020)] <- mean_value
+```
+
 
 ```{r}
 write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")

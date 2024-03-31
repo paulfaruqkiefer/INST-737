@@ -24,7 +24,7 @@ options(scipen=999)
 ##install.packages('caret')
 ##install.packages("MASS")
 ##install.packages("mice")
-
+##install.packages("pdp")
 library(tidyverse)
 #Necessary for date parsing.
 library(lubridate)
@@ -44,7 +44,7 @@ library(tigris)
 library(sf)
 #Eventually necessary for mapping.
 library(ggmap)
-#needed for logistic regression
+#Needed for logistic regression
 library(aod)
 #Needed for splitting into training and test datasets
 library(caret)
@@ -52,6 +52,8 @@ library(caret)
 library(MASS)
 #Needed for imputing missing values (using predictive mean matching)
 library(mice)
+#Needed for visualizing a partial dependence plot
+library(pdp)
 ```
 
 We read in our cleaned and combined dataset.
@@ -85,16 +87,37 @@ dim(test_data)
 ```
 
 ```{r}
+# Create scatterplot matrix
+pairs(train_data[, c("medincome_change_2010_2020", "tract_medincome_2020", "tract_medage_2020", "nhwhite_change_2010_2020", "mortgage_change_2010_2020", "mortgaged_2020", "poverty_2020", "pct_built_pre_1960", "great_recession_foreclosures")])
+```
+
+
+```{r}
 # Convert foreclosure_quantile to factor
 train_data$foreclosure_quantile <- factor(train_data$foreclosure_quantile)
 
-# Impute missing values in the dataset
-imputed_data <- mice(train_data, m = 5, method = "pmm")
-
 # Use the imputed dataset for model fitting
-model <- polr(foreclosure_quantile ~ medincome_change_2010_2020 + tract_medincome_2020 + tract_medage_2020 + nhwhite_change_2010_2020 + mortgage_change_2010_2020 + mortgaged_2020 + pct_built_pre_1960 + great_recession_foreclosures, data = imputed_data, Hess = TRUE)
+model <- polr(foreclosure_quantile ~ medincome_change_2010_2020 + tract_medage_2020 + nhwhite_change_2010_2020 + pct_built_pre_1960 + medincome_change_2010_2020 + great_recession_foreclosures, data = train_data, Hess = TRUE)
 
 # Summarize the model
 summary(model)
 ```
+```{r}
+# Check for collinear variables (using correlation matrix)
+correlation_matrix <- cor(numeric_vars)
+highly_correlated <- findCorrelation(correlation_matrix, cutoff = 0.8)
+print("Highly Correlated Variables:")
+print(colnames(numeric_vars)[highly_correlated])
+```
+
+
+
+```{r}
+# Use the imputed dataset for model fitting
+model <- polr(foreclosure_quantile ~ tract_homevalue_2020 + pct_built_2010_2019 + pct_built_pre_1960 + avg_bed + mortgage_change_2010_2020, data = train_data, Hess = TRUE)
+
+# Summarize the model
+summary(model)
+```
+
 
