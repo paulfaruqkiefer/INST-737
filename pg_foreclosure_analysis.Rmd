@@ -763,10 +763,14 @@ pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$t
 ```
 
 
+We write the foreclosures_per_tract dataframe to a .csv for our secondary markdowns.
+
 ```{r}
 write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
+
+For good measure, we can also do a preliminary test of the correlations between each of our independent variables.
 ```{r}
 # Selecting the variables of interest
 variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
@@ -791,7 +795,7 @@ print(correlation_matrix)
 
 
 
-
+And we can test the correlation coefficients of our independent variables/our dependent variable.
 ```{r}
 # Selecting the variables of interest (excluding foreclosure_pc_2020)
 variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
@@ -802,10 +806,9 @@ variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020
                             "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
                             "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
                             "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
-                            "mortgage_change_2015_2020", "mortgage_change_2010_2020", "ownoccupied_change_2010_2015", 
-                            "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020", "poverty_change_2010_2020", 
-                            "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
-                            "medincome_change_2010_2020")
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",
+                            "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015",
+                            "medincome_change_2015_2020", "medincome_change_2010_2020")
 
 # Calculate the correlation matrix
 correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_foreclosures_per_tract$foreclosure_pc_2020)
@@ -813,6 +816,19 @@ correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_f
 # Print the correlation coefficients
 print(correlation_matrix)
 ```
+
+Of the independent variables/groups of related independent variables available to us, the most strongly correlated with foreclosures per capita are:
+
+1. foreclosure_pc_2010
+2. mortgaged_2010/2015/2020
+3. own_occupied_2010/2015/2020
+4. tract_medage_2020
+5. pct_0_bd/pct_1_bd/pct_2_bd/pct_4_more_bed
+6. poverty_2010/2020
+9. tract_medincome_2010/2020
+10. avg_bed
+
+We can also visualize these correlation coefficients as a bar chart:
 ```{r}
 # Convert the correlation coefficients to a vector
 correlation_vector <- as.vector(correlation_coefficients)
