@@ -64,13 +64,19 @@ We read in our cleaned and combined dataset.
 # Read in the initial dataset, setting a guess_max limit to improve the accuracy of the data types assigned to each column.
 pg_foreclosures_per_tract <- read_csv("datasets/pg_foreclosures_per_tract.csv", guess_max = 173)
 ```
+In order to create a classification algorithm, we need to create an ordinal variable -- our response variable -- using the quantiles of the foreclosure_pc_2020 variable -- our original dependent variable. We can also create a column based on the quantiles that splits the data into two groups: the top 2 quantiles and the bottom 3 quantiles.
 
 ```{r}
 # Create a new column "foreclosure_quantile" based on quantiles of foreclosure_pc_2020
 pg_foreclosures_per_tract_log_reg <- pg_foreclosures_per_tract %>%
-  mutate(foreclosure_quantile = ntile(foreclosure_pc_2020, 5))
+    mutate(foreclosure_quantile = ntile(foreclosure_pc_2020, 5),
+         high_or_low_foreclosure = case_when(
+           foreclosure_quantile %in% c(1, 2, 3) ~ 0,
+           foreclosure_quantile %in% c(4, 5) ~ 1,
+         ))
 ```
 
+To create an initial model, we start by dividing our data into training and test sets. We use 70% of the rows for the training set and 30% for the test set.
 
 ```{r}
 # Set the seed for reproducibility
@@ -83,15 +89,13 @@ train_index <- createDataPartition(pg_foreclosures_per_tract_log_reg$foreclosure
 train_data <- pg_foreclosures_per_tract_log_reg[train_index, ]
 test_data <- pg_foreclosures_per_tract_log_reg[-train_index, ]
 
-# Check the dimensions of training and test sets
+# Check the dimensions of training and test sets to ensure they have the appropriate number of columns
 dim(train_data)
 dim(test_data)
 ```
+To avoid collinearity when choosing variables for our model, we need to check whether any of our independent variables are closely correlated with one another. If so, we will not use both in a single model.
 
-```{r}
-# Create scatterplot matrix
-pairs(train_data[, c("medincome_change_2010_2020", "tract_medincome_2020", "tract_medage_2020", "nhwhite_change_2010_2020", "mortgage_change_2010_2020", "mortgaged_2020", "poverty_2020", "pct_built_pre_1960", "great_recession_foreclosures")])
-```
+We should also check the ranges of our numeric variables to be sure there are no infinite values. This step also allows us to isolate collinear values.
 ```{r}
 # Check data range for numeric variables
 numeric_vars <- train_data[sapply(train_data, is.numeric)]
@@ -106,68 +110,225 @@ print(infinite_values)
 
 # Check for collinear variables (using correlation matrix)
 correlation_matrix <- cor(numeric_vars)
-highly_correlated <- findCorrelation(correlation_matrix, cutoff = 0.8)
+highly_correlated <- findCorrelation(correlation_matrix, cutoff = 0.7)
 print("Highly Correlated Variables:")
 print(colnames(numeric_vars)[highly_correlated])
 ```
+Using a correlation coefficient threshhold of 0.7, we find six sets of highly correlated variables.
 
+Based on that information, we can surmise that our model will be more functional if we do not include combinations/multiple variations of the following in our model:
+
+1. Mortgage/owner-occupied percentage variables
+2. Absolute median income variables.
+3. The change in mortgage percentage from 2010 to 2020 variable and the non-Hispanic white population in 2020 variable.
+4. Change in owner occupied percentage variables.
+
+We can visualize collinearity using a scatterplot matrix, but we should only plot smaller subsets of independent variables at a time to ensure readability. For the sake of space, we won't plot every possible combination -- only a small subset for demonstration purposes.
+
+```{r}
+# Create scatterplot matrix
+pairs(train_data[, c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2010", 
+                            "pct_built_2020_later")])
+```
+From our previous analyses, we also know that the following variables/groups of variables most strongly correlate with foreclosure_pc_2020:
+
+1. foreclosure_pc_2010
+2. mortgaged_2010/2015/2020
+3. own_occupied_2010/2015/2020
+4. tract_medage_2020
+5. pct_0_bd/pct_1_bd/pct_2_bd/pct_4_more_bed
+6. poverty_2010/2020
+9. tract_medincome_2010/2020
+10. avg_bed
+
+
+With that in mind, we can begin testing models. Because our response variable is ordinal rather than binary, we will use a proportional odds logistic regression formula.
+
+The first model includes only variables that use the whole tract population as the sample/denominator, including our single most predictive variable -- foreclosure_pc_2010, which represents the number of foreclosures per capita in a tract during the height of the great recession (2008-2010). We also use the median age in 2020 and poverty in 2010 variables, which are both highly predictive.
+
+
+```{r}
+# Convert foreclosure_quantile to factor to make the thing run (not really sure why I need to specify this, but it's the only thing that worked)
+train_data$foreclosure_quantile <- factor(train_data$foreclosure_quantile)
+
+# Use the training dataset for model fitting
+model_1 <- polr(foreclosure_quantile ~ foreclosure_pc_2010 + tract_medage_2020 + poverty_2010, data = train_data, Hess = TRUE)
+
+# Summarize the model
+summary(model_1)
+```
+In this model, the foreclosure_pc_2010 variable is the most predictive, and the poverty_2010 variable is the least predictive.
+
+With that model as a starting point, we can begin adding other (less predictive) variables that use the whole tract population as a sample/denominator, including the percentage of the population claiming non-Hispanic white ancestry in the 2016-2020 ACS and the change in reported median household incomes from the 2011-2015 ACS to the 2016-2020 ACS.
 
 ```{r}
 # Convert foreclosure_quantile to factor
 train_data$foreclosure_quantile <- factor(train_data$foreclosure_quantile)
 
 # Use the training dataset for model fitting
-model <- polr(foreclosure_quantile ~ medincome_change_2010_2020 + tract_medage_2020 + nhwhite_change_2010_2020 + medincome_change_2010_2020 + great_recession_foreclosures, data = train_data, Hess = TRUE)
+model_2 <- polr(foreclosure_quantile ~ foreclosure_pc_2010 + tract_medage_2020 + poverty_2010 + nhwhite_2020 + medincome_change_2015_2020, data = train_data, Hess = TRUE)
 
 # Summarize the model
-summary(model)
+summary(model_2)
 ```
+Those additions to the model improve its fit to some degree, but not enormously. It improves the predictive power of the tract_medage_2020 variable and poverty_2010 variable to some degree, but the nhwhite_2020 variable becomes more predictive than the povert_2010 variable. The medincome_change_2015_2020 is the least predictive by a long shot.
+
+We can try a different approach using housing characteristic/home ownership characteristic variables. We start with the housing/home ownership variables that had the strongest correlations with the foreclosure_pc_2020 variable during our initial analysis.
 
 ```{r}
 # Use the training dataset for model fitting
-model <- polr(foreclosure_quantile ~ avg_bed + pct_built_2010_2019 + pct_built_pre_1960 + mortgage_change_2010_2020, data = train_data, Hess = TRUE)
+model_3 <- polr(foreclosure_quantile ~ avg_bed + mortgaged_2010 + pct_1_bd, data = train_data, Hess = TRUE)
 
 # Summarize the model
-summary(model)
+summary(model_3)
 ```
+This model is less predictive than our first attempt, and the mortgaged_2010 variable is the most predictive of the three.
 
+We can try adding other housing-specific variables before we combine the two approaches. Here, we add the percentage of units built pre-1960 and between 2000-2009 to the model, as well as the change in the percentage of homes with mortgages between the 2011-2015 and 2016-2020 ACS. 
 
 ```{r}
 # Use the training dataset for model fitting
-model <- polr(foreclosure_quantile ~ medincome_change_2010_2020 + tract_medage_2020 + nhwhite_change_2010_2020 + great_recession_foreclosures + avg_bed + pct_built_2010_2019 + pct_built_pre_1960 + mortgage_change_2010_2020, data = train_data, Hess = TRUE)
+model_4 <- polr(foreclosure_quantile ~ avg_bed + mortgaged_2010 + pct_1_bd + pct_built_pre_1960 + pct_built_2000_2009 + mortgage_change_2010_2015, data = train_data, Hess = TRUE)
 
 # Summarize the model
-summary(model)
+summary(model_4)
 ```
+Those additions barely improve the fit of the model, and mortgated_2010 remains the most predictive variable.
+
+We can now test whether combining the population- and housing-centered models creates the most predictive model thus far. 
 
 ```{r}
-# Convert foreclosure_quantile to factor in the original dataset
-train_data$foreclosure_quantile <- factor(train_data$foreclosure_quantile)
-
-# Fit the model using the original dataset
-model <- polr(foreclosure_quantile ~ tract_medage_2020 + nhwhite_2020 + mortgaged_2020 +  great_recession_foreclosures, data = train_data, Hess = TRUE)
+# Use the training dataset for model fitting
+model_5 <- polr(foreclosure_quantile ~ foreclosure_pc_2010 + tract_medage_2020 + poverty_2010 + nhwhite_2020 + medincome_change_2015_2020 + avg_bed + mortgaged_2010 + pct_1_bd + pct_built_pre_1960 + pct_built_2000_2009 + mortgage_change_2010_2015, data = train_data, Hess = TRUE)
 
 # Summarize the model
-summary(model)
+summary(model_5)
 ```
+This model is the most predictive we've tried, and -- surprisingly -- the percentage of residents in a tract claiming non-Hispanic white ancestry is the most predictive variable in this model. We can also calculate the odds ratio for each variable. 
+
+```{r}
+# Define coefficients
+coefficients <- coef(model_5)
+
+# Calculate log-odds (which are just the coefficients)
+log_odds <- coefficients
+
+# Calculate odds ratios
+odds_ratios <- exp(coefficients)
+
+# Display the results
+result <- data.frame(
+  Predictor_Variable = names(coefficients),
+  Log_Odds = log_odds,
+  Odds_Ratio = odds_ratios
+)
+
+print(result)
+```
+The odds ratio figures suggest that a single-unit shift in the percentage of homes with a mortgage as of the 2006-2010 ACS would increase the odds of transitioning to a higher foreclosure per capita quantile by a factor of 281 - wow!
+
+
+We can now test that model on our test set.
+
+```{r}
+# Predict on test data
+predictions <- predict(model_5, newdata = test_data, type = "class")
+
+# View the predictions
+print(predictions)
+```
+To test the accuracy of those predictions, we need to compare them to the corresponding foreclosure_quantile values in the test_data dataframe.
+
+```{r}
+# Extract the actual values from test_data
+actual_values <- test_data$foreclosure_quantile
+
+# Compare predicted values with actual values
+comparison <- data.frame(Actual = actual_values, Predicted = predictions)
+
+# Count the number of matching rows
+matching_rows <- sum(comparison$Actual == comparison$Predicted)
+
+# Calculate the total number of rows
+total_rows <- nrow(comparison)
+
+# Calculate the percentage of matching rows
+matching_percentage <- (matching_rows / total_rows) * 100
+
+# Print the percentage
+cat("Percentage of matching rows:", matching_percentage, "%\n")
+```
+It appears that this model only correctly predicts the foreclosure per capita quantile at the tract level half the time.
+
+
+!!Naive Bayes!!: 
+
+To create a Naive Bayes model, we will create a new dataframe featuring categorical variables for each of the elevent independent variables in our fifth proportional odds logistic regression model. Those categorical variables are made by dividing each independent variables into quantiles and assigning a number (1 for first quantile, etc.).
+
+```{r}
+pg_foreclosures_per_tract_naive_bayes <- pg_foreclosures_per_tract_log_reg %>%
+  mutate(
+    nhwhite_2020_quantile = ntile(nhwhite_2020, 5),
+    foreclosure_pc_2010_quantile = ntile(foreclosure_pc_2010, 5),
+    tract_medage_2020_quantile = ntile(tract_medage_2020, 5),
+    poverty_2010_quantile = ntile(poverty_2010, 5),
+    medincome_change_2015_2020_quantile = ntile(medincome_change_2015_2020, 5),
+    avg_bed_quantile = ntile(avg_bed, 5),
+    mortgaged_2010_quantile = ntile(mortgaged_2010, 5),
+    pct_1_bd_quantile = ntile(pct_1_bd, 5),
+    pct_built_pre_1960_quantile = ntile(pct_built_pre_1960, 5),
+    pct_built_2000_2009_quantile = ntile(pct_built_2000_2009, 5),
+    mortgage_change_2010_2015_quantile = ntile(mortgage_change_2010_2015, 5)
+  )
+```
+
+
+Now that we have a new dataframe with categorical variables for each of our independent variables, we can divide the pg_foreclosures_per_tract_naive_bayes dataframe into training and test sets.
+
+
 ```{r}
 set.seed(123) # For reproducibility
 test_percent <- 0.2
-indices <- sample(1:nrow(pg_foreclosures_per_tract_log_reg), 
-                  size = round(test_percent * nrow(pg_foreclosures_per_tract_log_reg)))
+indices <- sample(1:nrow(pg_foreclosures_per_tract_naive_bayes), 
+                  size = round(test_percent * nrow(pg_foreclosures_per_tract_naive_bayes)))
 
-train_data <- pg_foreclosures_per_tract_log_reg[-indices, ]
-test_data <- pg_foreclosures_per_tract_log_reg[indices, ]
-
-# Step 2: Train Naive Bayes Model
-nb_model <- naiveBayes(foreclosure_quantile ~ tract_medage_2020 + nhwhite_2020 + mortgaged_2020 + great_recession_foreclosures,
-                       data = train_data)
-
-# Step 3: Make Predictions on Test Data
-predictions <- predict(nb_model, newdata = test_data)
-
-# Step 4: Evaluate Model Performance
-confusionMatrix(predictions, test_data$foreclosure_quantile)
+train_data_2 <- pg_foreclosures_per_tract_naive_bayes[-indices, ]
+test_data_2 <- pg_foreclosures_per_tract_naive_bayes[indices, ]
 ```
 
+We can now train the Naive Bayes model using the same set of independent variables from the fifth proportional odds logistic regression model.
+
+```{r}
+#Train Naive Bayes Model
+# Define the formula for the Naive Bayes model
+formula <- foreclosure_quantile ~ nhwhite_2020_quantile + 
+                                  foreclosure_pc_2010_quantile + 
+                                  tract_medage_2020_quantile + 
+                                  poverty_2010_quantile + 
+                                  medincome_change_2015_2020_quantile + 
+                                  avg_bed_quantile + 
+                                  mortgaged_2010_quantile + 
+                                  pct_1_bd_quantile + 
+                                  pct_built_pre_1960_quantile + 
+                                  pct_built_2000_2009_quantile + 
+                                  mortgage_change_2010_2015_quantile
+
+# Fit the Naive Bayes model
+naive_bayes_model <- naiveBayes(formula, data = pg_foreclosures_per_tract_naive_bayes)
+
+# Summary of the model
+summary(naive_bayes_model)
+```
+
+```{r}
+# Predict using the Naive Bayes model
+predictions <- predict(naive_bayes_model, newdata = test_data_2)
+
+# Create the confusion matrix
+confusion_matrix <- confusionMatrix(predictions, test_data_2$foreclosure_quantile)
+
+# Print the confusion matrix
+print(confusion_matrix)
+```
 
