@@ -18,6 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
+##install.packages('gplots')
 library(tidyverse)
 library(dplyr)
 #Necessary for date parsing.
@@ -30,6 +31,7 @@ library(ggthemes)
 library(tidycensus)
 #Eventually necessary for visualizations.
 library(ggplot2)
+library(gplots)
 #Potentially necessary for cleaning.
 library(ggrepel)
 #Eventually necessary for visualizations.
@@ -781,25 +783,13 @@ variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "trac
                             "medincome_change_2010_2020")
 
 # Calculating the correlation matrix
-correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest])
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_all])
 
 # Print the correlation matrix
 print(correlation_matrix)
 ```
 
 
-
-```{r}
-# Select a subset of variables of interest (excluding foreclosure_pc_2020)
-variables_of_interest_subset <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
-                            "tract_medincome_2010", "foreclosure_pc_2010")
-
-# Create a new dataframe with variables of interest and foreclosure_pc_2020
-data_subset <- pg_foreclosures_per_tract[c("foreclosure_pc_2020", variables_of_interest_subset)]
-
-# Create scatterplot matrix
-pairs(data_subset)
-```
 
 
 ```{r}
@@ -822,5 +812,24 @@ correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_f
 
 # Print the correlation coefficients
 print(correlation_matrix)
+```
+```{r}
+# Convert the correlation coefficients to a vector
+correlation_vector <- as.vector(correlation_coefficients)
+
+# Exclude the diagonal (correlation of a variable with itself)
+correlation_vector <- correlation_vector[!is.na(correlation_vector) & correlation_vector != 1]
+
+# Get the names of variables
+variable_names <- names(pg_foreclosures_per_tract[variables_of_interest])
+
+# Plot the correlations as a bar plot with variable names as labels
+barplot(correlation_vector, 
+        main = "Correlation of independent variables with foreclosures per capita",
+        xlab = "",
+        ylab = "Correlation Coefficient",
+        names.arg = variable_names,
+        las = 2, # Rotate labels vertically
+        cex.names = 0.7) # Adjust label size
 ```
 

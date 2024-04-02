@@ -150,6 +150,24 @@ model <- polr(foreclosure_quantile ~ tract_medage_2020 + nhwhite_2020 + mortgage
 # Summarize the model
 summary(model)
 ```
+```{r}
+set.seed(123) # For reproducibility
+test_percent <- 0.2
+indices <- sample(1:nrow(pg_foreclosures_per_tract_log_reg), 
+                  size = round(test_percent * nrow(pg_foreclosures_per_tract_log_reg)))
 
+train_data <- pg_foreclosures_per_tract_log_reg[-indices, ]
+test_data <- pg_foreclosures_per_tract_log_reg[indices, ]
+
+# Step 2: Train Naive Bayes Model
+nb_model <- naiveBayes(foreclosure_quantile ~ tract_medage_2020 + nhwhite_2020 + mortgaged_2020 + great_recession_foreclosures,
+                       data = train_data)
+
+# Step 3: Make Predictions on Test Data
+predictions <- predict(nb_model, newdata = test_data)
+
+# Step 4: Evaluate Model Performance
+confusionMatrix(predictions, test_data$foreclosure_quantile)
+```
 
 
