@@ -736,7 +736,8 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
   mutate(nhwhite_change_2010_2020 = nhwhite_2020-nhwhite_2010) |>
   mutate(medincome_change_2010_2015 = (tract_medincome_2015-tract_medincome_2010)/tract_medincome_2010) |>
   mutate(medincome_change_2015_2020 = (tract_medincome_2020-tract_medincome_2015)/tract_medincome_2015) |>
-  mutate(medincome_change_2010_2020 = (tract_medincome_2020-tract_medincome_2010)/tract_medincome_2010) 
+  mutate(medincome_change_2010_2020 = (tract_medincome_2020-tract_medincome_2010)/tract_medincome_2010) |>
+  mutate(pop_change_pct = (tract_pop_2020-tract_pop_2010)/tract_pop_2010)
 ```
 
 ```{r}
