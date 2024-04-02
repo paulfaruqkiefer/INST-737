@@ -765,3 +765,62 @@ pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$t
 write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
+```{r}
+# Selecting the variables of interest
+variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2020", "foreclosure_pc_2010", 
+                            "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
+                            "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
+                            "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
+                            "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
+                            "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
+                            "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020", "ownoccupied_change_2010_2015", 
+                            "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020", "poverty_change_2010_2020", 
+                            "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
+                            "medincome_change_2010_2020")
+
+# Calculating the correlation matrix
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest])
+
+# Print the correlation matrix
+print(correlation_matrix)
+```
+
+
+
+```{r}
+# Select a subset of variables of interest (excluding foreclosure_pc_2020)
+variables_of_interest_subset <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2010")
+
+# Create a new dataframe with variables of interest and foreclosure_pc_2020
+data_subset <- pg_foreclosures_per_tract[c("foreclosure_pc_2020", variables_of_interest_subset)]
+
+# Create scatterplot matrix
+pairs(data_subset)
+```
+
+
+```{r}
+# Selecting the variables of interest (excluding foreclosure_pc_2020)
+variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2010", 
+                            "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
+                            "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
+                            "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
+                            "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
+                            "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
+                            "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020", "ownoccupied_change_2010_2015", 
+                            "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020", "poverty_change_2010_2020", 
+                            "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
+                            "medincome_change_2010_2020")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_foreclosures_per_tract$foreclosure_pc_2020)
+
+# Print the correlation coefficients
+print(correlation_matrix)
+```
+
