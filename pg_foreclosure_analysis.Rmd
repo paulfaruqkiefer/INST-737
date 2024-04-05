@@ -40,6 +40,8 @@ library(tigris)
 library(sf)
 #Eventually necessary for mapping.
 library(ggmap)
+#Needed for dividing into training and test sets.
+library(caret)
 ```
 
 
@@ -759,8 +761,8 @@ Because there are only three missing values in the tract_homevalue_2020 column -
 
 ```{r}
 # Replace missing values in tract_homevalue_2020 with the mean of the column
-mean_value <- mean(pg_foreclosures_per_tract$tract_homevalue_2020, na.rm = TRUE)
-pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$tract_homevalue_2020)] <- mean_value
+median_value <- median(pg_foreclosures_per_tract$tract_homevalue_2020, na.rm = TRUE)
+pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$tract_homevalue_2020)] <- median_value
 ```
 
 
@@ -782,8 +784,7 @@ variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "trac
                             "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
                             "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
                             "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
-                            "mortgage_change_2015_2020", "mortgage_change_2010_2020", "ownoccupied_change_2010_2015", 
-                            "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020", "poverty_change_2010_2020", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",   "poverty_change_2010_2020", 
                             "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
                             "medincome_change_2010_2020")
 
@@ -809,7 +810,7 @@ variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020
                             "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
                             "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",
                             "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015",
-                            "medincome_change_2015_2020", "medincome_change_2010_2020")
+                            "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 
 # Calculate the correlation matrix
 correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_foreclosures_per_tract$foreclosure_pc_2020)
@@ -832,7 +833,7 @@ Of the independent variables/groups of related independent variables available t
 We can also visualize these correlation coefficients as a bar chart:
 ```{r}
 # Convert the correlation coefficients to a vector
-correlation_vector <- as.vector(correlation_coefficients)
+correlation_vector <- as.vector(correlation_matrix)
 
 # Exclude the diagonal (correlation of a variable with itself)
 correlation_vector <- correlation_vector[!is.na(correlation_vector) & correlation_vector != 1]
@@ -848,5 +849,84 @@ barplot(correlation_vector,
         names.arg = variable_names,
         las = 2, # Rotate labels vertically
         cex.names = 0.7) # Adjust label size
+```
+
+```{r}
+# Loop through each independent variable
+for (variable in variables_of_interest) {
+  # Fit linear regression model
+  lm_model <- lm(foreclosure_pc_2020 ~ pg_foreclosures_per_tract[[variable]], data = pg_foreclosures_per_tract)
+  
+  # Print results
+  cat("Variable:", variable, "\n")
+  cat("Intercept:", coef(lm_model)[1], "\n")
+  cat("Coefficient:", coef(lm_model)[2], "\n")
+  cat("Is it a predictive feature?:", ifelse(summary(lm_model)$coefficients[2, "Pr(>|t|)"] < 0.05, "Yes", "No"), "\n")
+  cat("\n")
+}
+
+# Get residuals
+residuals <- resid(lm_model)
+
+# Check assumptions of linear regression
+# 1. Linearity: You can check this using scatterplots of each independent variable against the dependent variable.
+# 2. Independence: You can check this using residual plots or Durbin-Watson test.
+# 3. Homoscedasticity: You can check this using residual plots.
+# 4. Normality of residuals: You can check this using a histogram or Q-Q plot of residuals.
+
+# For example:
+# Plot residuals vs fitted values
+plot(residuals ~ fitted(lm_model), xlab = "Fitted values", ylab = "Residuals", main = "Residuals vs Fitted")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+```
+
+```{r}
+# Plot histogram of residuals
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", ylab = "Frequency")
+
+# Add a normal curve to the histogram
+curve(dnorm(x, mean = mean(residuals), sd = sd(residuals)), add = TRUE, col = "blue")
+```
+
+```{r}
+# Loop through each independent variable
+for (variable in variables_of_interest) {
+  # Create a new plotting window for each scatterplot
+  plot.new()
+  
+  # Create scatterplot
+  plot(pg_foreclosures_per_tract[[variable]], pg_foreclosures_per_tract$foreclosure_pc_2020,
+       xlab = variable, ylab = "foreclosure_pc_2020", main = paste("Scatterplot of", variable))
+}
+```
+
+```{r}
+# Convert tract_number to character before splitting the data
+pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+# Remove the tract_number variable from the list of variables of interest
+variables_of_interest <- setdiff(variables_of_interest, "tract_number")
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+train_data <- pg_foreclosures_per_tract[train_indices, ]
+test_data <- pg_foreclosures_per_tract[-train_indices, ]
+
+# Train the linear regression model on the training data
+lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", variables_of_interest)])
+
+# Use the trained model to predict on the testing data
+predicted_values <- predict(lm_model, newdata = test_data[, variables_of_interest])
+
+# Calculate the correlation between the predicted and real values
+correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
+
+# Calculate the mean squared error between the predicted and real values
+mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
+
+# Print the correlation and mean squared error
+cat("Correlation between predicted and real values:", correlation, "\n")
+cat("Mean Squared Error:", mse, "\n")
 ```
 
