@@ -18,7 +18,9 @@ knitr::opts_chunk$set(echo = TRUE)
 options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
+##install.packages('gplots')
 library(tidyverse)
+library(dplyr)
 #Necessary for date parsing.
 library(lubridate)
 #Necessary for column name cleaning.
@@ -29,6 +31,7 @@ library(ggthemes)
 library(tidycensus)
 #Eventually necessary for visualizations.
 library(ggplot2)
+library(gplots)
 #Potentially necessary for cleaning.
 library(ggrepel)
 #Eventually necessary for visualizations.
@@ -108,7 +111,8 @@ pg_foreclosures_filtered <- pg_foreclosures_filtered[!is.na(pg_foreclosures_filt
 We can clean up our dataset by removing extraneous columns created by Geocodio.
 ```{r}
 # Remove unnecessary columns with the select() function.
-pg_foreclosures_filtered <- select(pg_foreclosures_filtered, -accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied)
+pg_foreclosures_filtered <- pg_foreclosures_filtered %>%
+  select(-accuracy_score, -accuracy_type, -source, -full_fips_block, -metro_micro_statistical_area_name,-metro_micro_statistical_area_code, -metro_micro_statistical_area_type, -combined_statistical_area_name, -metropolitan_division_area_name, -metropolitan_division_area_code, -addressoccupied)
 ```
 
 Next, we remove all records for addresses outside of Maryland. 
@@ -732,7 +736,8 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
   mutate(nhwhite_change_2010_2020 = nhwhite_2020-nhwhite_2010) |>
   mutate(medincome_change_2010_2015 = (tract_medincome_2015-tract_medincome_2010)/tract_medincome_2010) |>
   mutate(medincome_change_2015_2020 = (tract_medincome_2020-tract_medincome_2015)/tract_medincome_2015) |>
-  mutate(medincome_change_2010_2020 = (tract_medincome_2020-tract_medincome_2010)/tract_medincome_2010) 
+  mutate(medincome_change_2010_2020 = (tract_medincome_2020-tract_medincome_2010)/tract_medincome_2010) |>
+  mutate(pop_change_pct = (tract_pop_2020-tract_pop_2010)/tract_pop_2010)
 ```
 
 ```{r}
@@ -744,6 +749,104 @@ pg_foreclosures_per_tract <- pg_foreclosures_per_tract |>
 
 
 ```{r}
+# Create vector to count missing values by column. 
+missing_values_count <- colSums(is.na(pg_foreclosures_per_tract))
+
+# Print the number of missing values in each column
+print(missing_values_count)
+```
+Because there are only three missing values in the tract_homevalue_2020 column -- and nowhere else in the dataset -- we can impute the missing values using the median home value for PG county with relatively little impact.
+
+```{r}
+# Replace missing values in tract_homevalue_2020 with the mean of the column
+mean_value <- mean(pg_foreclosures_per_tract$tract_homevalue_2020, na.rm = TRUE)
+pg_foreclosures_per_tract$tract_homevalue_2020[is.na(pg_foreclosures_per_tract$tract_homevalue_2020)] <- mean_value
+```
+
+
+We write the foreclosures_per_tract dataframe to a .csv for our secondary markdowns.
+
+```{r}
 write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
+```
+
+
+For good measure, we can also do a preliminary test of the correlations between each of our independent variables.
+```{r}
+# Selecting the variables of interest
+variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2020", "foreclosure_pc_2010", 
+                            "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
+                            "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
+                            "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
+                            "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
+                            "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
+                            "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020", "ownoccupied_change_2010_2015", 
+                            "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020", "poverty_change_2010_2020", 
+                            "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
+                            "medincome_change_2010_2020")
+
+# Calculating the correlation matrix
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_all])
+
+# Print the correlation matrix
+print(correlation_matrix)
+```
+
+
+
+And we can test the correlation coefficients of our independent variables/our dependent variable.
+```{r}
+# Selecting the variables of interest (excluding foreclosure_pc_2020)
+variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2010", 
+                            "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
+                            "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
+                            "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
+                            "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
+                            "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
+                            "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",
+                            "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015",
+                            "medincome_change_2015_2020", "medincome_change_2010_2020")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_foreclosures_per_tract$foreclosure_pc_2020)
+
+# Print the correlation coefficients
+print(correlation_matrix)
+```
+
+Of the independent variables/groups of related independent variables available to us, the most strongly correlated with foreclosures per capita are:
+
+1. foreclosure_pc_2010
+2. mortgaged_2010/2015/2020
+3. own_occupied_2010/2015/2020
+4. tract_medage_2020
+5. pct_0_bd/pct_1_bd/pct_2_bd/pct_4_more_bed
+6. poverty_2010/2020
+9. tract_medincome_2010/2020
+10. avg_bed
+
+We can also visualize these correlation coefficients as a bar chart:
+```{r}
+# Convert the correlation coefficients to a vector
+correlation_vector <- as.vector(correlation_coefficients)
+
+# Exclude the diagonal (correlation of a variable with itself)
+correlation_vector <- correlation_vector[!is.na(correlation_vector) & correlation_vector != 1]
+
+# Get the names of variables
+variable_names <- names(pg_foreclosures_per_tract[variables_of_interest])
+
+# Plot the correlations as a bar plot with variable names as labels
+barplot(correlation_vector, 
+        main = "Correlation of independent variables with foreclosures per capita",
+        xlab = "",
+        ylab = "Correlation Coefficient",
+        names.arg = variable_names,
+        las = 2, # Rotate labels vertically
+        cex.names = 0.7) # Adjust label size
 ```
 
