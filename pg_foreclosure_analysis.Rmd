@@ -927,6 +927,7 @@ for (variable in variables_of_interest_subset_2) {
   plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
 }
 ```
+Subset 3:
 ```{r}
 par(mfrow=c(3, 4))
 par(mar=c(3, 3, 2, 1)) 
@@ -943,6 +944,7 @@ for (variable in variables_of_interest_subset_3) {
 
 }
 ```
+Subset 4:
 ```{r}
 par(mfrow=c(3, 4))
 par(mar=c(3, 3, 2, 1)) 
@@ -964,23 +966,50 @@ Each set of residuals appears to be roughly normally distributed around 0.
 Next, we can use the trained models to predict on our testing data. We will show the results together with confidence and prediction bands and prediction accuracy using (1) the correlation between the predicted and real values and (2) the mean square error between the two.
 
 ```{r}
-par(mfrow=c(3, 4)) # Adjust rows and columns according to your preference
-
 for (variable in variables_of_interest_subset_1) {
   # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
   
-  # Use the trained model to predict on testing data
-  predictions <- predict(model, newdata = pg_foreclosures_test)
+  # Use the trained model to predict on testing data and obtain confidence intervals
+  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "confidence", level = 0.95)
   
   # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+  correlation_test <- cor(predictions[, 1], pg_foreclosures_test$foreclosure_pc_2020)
   
   # Calculate mean square error
-  mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  mse_test <- mean((predictions[, 1] - pg_foreclosures_test$foreclosure_pc_2020)^2)
   
-  # Plot predicted vs. actual values
-  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+  # Plot predicted vs. actual values with confidence bands
+ plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, 1], 
+       main = paste("Predicted vs. Actual for", variable),
+       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, 2], predictions[, 3])))
+  abline(0, 1, col = "red") # Add a diagonal line for reference
+  
+  # Print correlation and mean square error
+  cat("Variable:", variable, "\n")
+  cat("Correlation on Testing Data:", correlation_test, "\n")
+  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("\n")
+}
+
+```
+
+```{r}
+for (variable in variables_of_interest_subset_2) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Use the trained model to predict on testing data and obtain confidence intervals
+  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "confidence", level = 0.95)
+  
+  # Calculate correlation between predicted and actual values
+  correlation_test <- cor(predictions[, 1], pg_foreclosures_test$foreclosure_pc_2020)
+  
+  # Calculate mean square error
+  mse_test <- mean((predictions[, 1] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  
+  # Plot predicted vs. actual values with confidence bands
+  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, 1], 
        main = paste("Predicted vs. Actual for", variable),
        xlab = "Actual Values", ylab = "Predicted Values")
   abline(0, 1, col = "red") # Add a diagonal line for reference
@@ -994,11 +1023,71 @@ for (variable in variables_of_interest_subset_1) {
 
 ```
 
+```{r}
+for (variable in variables_of_interest_subset_3) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Use the trained model to predict on testing data and obtain confidence intervals
+  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "confidence", level = 0.95)
+  
+  # Calculate correlation between predicted and actual values
+  correlation_test <- cor(predictions[, 1], pg_foreclosures_test$foreclosure_pc_2020)
+  
+  # Calculate mean square error
+  mse_test <- mean((predictions[, 1] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  
+  # Plot predicted vs. actual values with confidence bands
+ plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, 1], 
+       main = paste("Predicted vs. Actual for", variable),
+       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, 2], predictions[, 3])))
+  abline(0, 1, col = "red") # Add a diagonal line for reference
+  
+  # Print correlation and mean square error
+  cat("Variable:", variable, "\n")
+  cat("Correlation on Testing Data:", correlation_test, "\n")
+  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("\n")
+}
+```
+
+```{r}
+for (variable in variables_of_interest_subset_4) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Use the trained model to predict on testing data and obtain confidence intervals
+  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "confidence", level = 0.95)
+  
+  # Calculate correlation between predicted and actual values
+  correlation_test <- cor(predictions[, 1], pg_foreclosures_test$foreclosure_pc_2020)
+  
+  # Calculate mean square error
+  mse_test <- mean((predictions[, 1] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  
+  # Plot predicted vs. actual values with confidence bands
+ plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, 1], 
+       main = paste("Predicted vs. Actual for", variable),
+       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, 2], predictions[, 3])))
+  abline(0, 1, col = "red") # Add a diagonal line for reference
+  
+  # Print correlation and mean square error
+  cat("Variable:", variable, "\n")
+  cat("Correlation on Testing Data:", correlation_test, "\n")
+  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("\n")
+}
+```
+
+
+
+Multivariate regression:
+
 We need to do a preliminary test of the correlations between each of our independent variables. This will help us identify collinearity, which would negatively impact the accuracy of our model.
+
 ```{r}
 # Calculating the correlation matrix
 correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest])
-
 ```
 
 Using that correlation matrix, we can directly compute which variables have a correlation coefficient of over 0.8. 
@@ -1017,7 +1106,6 @@ for (i in 1:nrow(highly_correlated)) {
   cat("Variables", var1, "and", var2, "are highly correlated (correlation =", corr, ")\n")
 }
 ```
-
 
 Both to answer the main questions and to determine which of the collinear variables to keep in our "variables of interest" list (or version of said list), we can test the correlation coefficients of our independent variables/our dependent variable.
 
@@ -1043,7 +1131,6 @@ print(correlation_matrix)
 ```
 
 
-
 We can also visualize these correlation coefficients as a bar chart:
 ```{r}
 # Convert the correlation coefficients to a vector
@@ -1064,74 +1151,14 @@ barplot(correlation_vector,
         las = 2, # Rotate labels vertically
         cex.names = 0.7) # Adjust label size
 ```
-We can also visualize these correlations using a scatter plot.
-
-```{r}
-# Loop through each independent variable
-for (variable in variables_of_interest) {
-  # Create a new plotting window for each scatterplot
-  plot.new()
-  
-  # Create scatterplot
-  plot(pg_foreclosures_per_tract[[variable]], pg_foreclosures_per_tract$foreclosure_pc_2020,
-       xlab = variable, ylab = "foreclosure_pc_2020", main = paste("Scatterplot of", variable))
-}
-```
-
-
-
-
-
-
-To answer the core questions, we also need to assess the residuals.
-
-```{r}
-# Loop through each independent variable
-for (variable in variables_of_interest) {
-  # Fit linear regression model
-  lm_model <- lm(foreclosure_pc_2020 ~ pg_foreclosures_per_tract[[variable]], data = pg_foreclosures_per_tract)
-  
-  # Print results
-  cat("Variable:", variable, "\n")
-  cat("Intercept:", coef(lm_model)[1], "\n")
-  cat("Coefficient:", coef(lm_model)[2], "\n")
-  cat("Is it a predictive feature?:", ifelse(summary(lm_model)$coefficients[2, "Pr(>|t|)"] < 0.05, "Yes", "No"), "\n")
-  cat("\n")
-}
-
-# Get residuals
-residuals <- resid(lm_model)
-
-# Check assumptions of linear regression
-# 1. Linearity: You can check this using scatterplots of each independent variable against the dependent variable.
-# 2. Independence: You can check this using residual plots or Durbin-Watson test.
-# 3. Homoscedasticity: You can check this using residual plots.
-# 4. Normality of residuals: You can check this using a histogram or Q-Q plot of residuals.
-
-# For example:
-# Plot residuals vs fitted values
-plot(residuals ~ fitted(lm_model), xlab = "Fitted values", ylab = "Residuals", main = "Residuals vs Fitted")
-abline(h = 0, col = "red")  # Add a horizontal line at y = 0
-```
-
-If we plot the residuals as a histogram, we see that they are (roughly) normally distributed.
-```{r}
-# Plot histogram of residuals
-hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", ylab = "Frequency")
-
-# Add a normal curve to the histogram
-curve(dnorm(x, mean = mean(residuals), sd = sd(residuals)), add = TRUE, col = "blue")
-```
-
-
-Multivariate Regression:
 
 Next, we can define a set of variables to test that does not include collinear variables and that prioritize the variables from collinear sets (nhwhite_2020, for instance) with the highest correlation coefficient within their set.
 
 ```{r}
-# Selecting the variables of interest (excluding foreclosure_pc_2020)
-test_variables_1 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009",  "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", "pct_built_pre_1960", "poverty_2010", "nhwhite_2020", "mortgaged_2010", "mortgage_change_2010_2015", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
+# Selecting test variables
+test_variables_1 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009",  "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", "pct_built_pre_1960", "poverty_2020", "nhwhite_2020", "mortgaged_2010", "mortgage_change_2010_2015", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 ```
+
 We can now run that list of variables through a linear regression model. 
 ```{r}
 # Convert tract_number to character before splitting the data
@@ -1140,28 +1167,130 @@ pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract
 # Split the data into training and testing sets
 set.seed(123) # for reproducibility
 train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
-train_data <- pg_foreclosures_per_tract[train_indices, ]
-test_data <- pg_foreclosures_per_tract[-train_indices, ]
+train_data_multivariate_1 <- pg_foreclosures_per_tract[train_indices, ]
+test_data_multivariate_1 <- pg_foreclosures_per_tract[-train_indices, ]
 
 # Train the linear regression model on the training data
-lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", test_variables_1)])
+lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data_multivariate_1[, c("foreclosure_pc_2020", test_variables_1)])
 
 # Use the trained model to predict on the testing data
-predicted_values <- predict(lm_model, newdata = test_data[, test_variables_1])
+predicted_values <- predict(lm_model, newdata = test_data_multivariate_1[, test_variables_1])
 
 # Calculate the correlation between the predicted and real values
-correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
+correlation <- cor(predicted_values, test_data_multivariate_1$foreclosure_pc_2020)
 
 # Calculate the mean squared error between the predicted and real values
-mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
+mse <- mean((predicted_values - test_data_multivariate_1$foreclosure_pc_2020)^2)
 
-# Print the correlation and mean squared error
+# Obtain coefficients for each feature
+coefficients <- coef(lm_model)
+print(coefficients)
+
+# Identify the most predictive features
+# Absolute values of coefficients can be considered for importance
+# Higher absolute values indicate more influence on the prediction
+absolute_coefficients <- abs(coefficients[-1]) # Exclude intercept
+top_predictive_features <- names(absolute_coefficients)[order(-absolute_coefficients)][1:5] # Select top 5 features
+
+# Print the most predictive features, correlation, and mean squared error
+cat("Most predictive features:", top_predictive_features, "\n")
 cat("Correlation between predicted and real values:", correlation, "\n")
 cat("Mean Squared Error:", mse, "\n")
 ```
 This is a reasonably strong model, but there is certainly room for improvement.
 
-```{r}
+We can define a different set of test variables, removing mortgage/years built percentages and using the poverty rate from 2010. 
 
+```{r}
+# Selecting test variables
+test_variables_2 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2000_2009", "poverty_2010", "nhwhite_2020", "mortgage_change_2010_2020", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 ```
+
+We run that list of variables through a model:
+
+```{r}
+# Convert tract_number to character before splitting the data
+pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+train_data_multivariate_1 <- pg_foreclosures_per_tract[train_indices, ]
+test_data_multivariate_1 <- pg_foreclosures_per_tract[-train_indices, ]
+
+# Train the linear regression model on the training data
+lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data_multivariate_1[, c("foreclosure_pc_2020", test_variables_2)])
+
+# Use the trained model to predict on the testing data
+predicted_values <- predict(lm_model, newdata = test_data_multivariate_1[, test_variables_2])
+
+# Calculate the correlation between the predicted and real values
+correlation <- cor(predicted_values, test_data_multivariate_1$foreclosure_pc_2020)
+
+# Calculate the mean squared error between the predicted and real values
+mse <- mean((predicted_values - test_data_multivariate_1$foreclosure_pc_2020)^2)
+
+# Obtain coefficients for each feature
+coefficients <- coef(lm_model)
+print(coefficients)
+
+# Identify the most predictive features
+# Absolute values of coefficients can be considered for importance
+# Higher absolute values indicate more influence on the prediction
+absolute_coefficients <- abs(coefficients[-1]) # Exclude intercept
+top_predictive_features <- names(absolute_coefficients)[order(-absolute_coefficients)][1:5] # Select top 5 features
+
+# Print the most predictive features, correlation, and mean squared error
+cat("Most predictive features:", top_predictive_features, "\n")
+cat("Correlation between predicted and real values:", correlation, "\n")
+cat("Mean Squared Error:", mse, "\n")
+```
+This model is slightly less predictive. 
+
+We can try again with yet another set of variables, removing avg_bed and replacing it with ownoccupied_2010. 
+
+```{r}
+# Selecting test variables
+test_variables_3 <- c("ownoccupied_2010", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2000_2009", "poverty_2010", "nhwhite_2020", "mortgage_change_2010_2020", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
+```
+
+We can run that through a model:
+```{r}
+# Convert tract_number to character before splitting the data
+pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+train_data_multivariate_1 <- pg_foreclosures_per_tract[train_indices, ]
+test_data_multivariate_1 <- pg_foreclosures_per_tract[-train_indices, ]
+
+# Train the linear regression model on the training data
+lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data_multivariate_1[, c("foreclosure_pc_2020", test_variables_3)])
+
+# Use the trained model to predict on the testing data
+predicted_values <- predict(lm_model, newdata = test_data_multivariate_1[, test_variables_3])
+
+# Calculate the correlation between the predicted and real values
+correlation <- cor(predicted_values, test_data_multivariate_1$foreclosure_pc_2020)
+
+# Calculate the mean squared error between the predicted and real values
+mse <- mean((predicted_values - test_data_multivariate_1$foreclosure_pc_2020)^2)
+
+# Obtain coefficients for each feature
+coefficients <- coef(lm_model)
+print(coefficients)
+
+# Identify the most predictive features
+# Absolute values of coefficients can be considered for importance
+# Higher absolute values indicate more influence on the prediction
+absolute_coefficients <- abs(coefficients[-1]) # Exclude intercept
+top_predictive_features <- names(absolute_coefficients)[order(-absolute_coefficients)][1:5] # Select top 5 features
+
+# Print the most predictive features, correlation, and mean squared error
+cat("Most predictive features:", top_predictive_features, "\n")
+cat("Correlation between predicted and real values:", correlation, "\n")
+cat("Mean Squared Error:", mse, "\n")
+```
+So far, this model is the most predictive.
 
