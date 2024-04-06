@@ -20,6 +20,7 @@ options(scipen=999)
 ##install.packages('ggthemes')
 ##install.packages('gplots')
 #install.packages('car')
+##install.packages("glmnet")
 library(tidyverse)
 library(dplyr)
 #Necessary for date parsing.
@@ -45,7 +46,11 @@ library(ggmap)
 library(caret)
 #Needed for identifying collinear variables.
 library(car)
+#Needed for regularization
+library(glmnet)
 ```
+
+1. Data preparation: 
 
 
 The foreclosure dataset contains 71676 rows and 10 columns, including the street number, street name, city, state and zip code of each foreclosure. For our purposes, only the components of the address will be needed. 
@@ -776,7 +781,8 @@ write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
 
-Linear regression: 
+
+2. Single-variable linear regression: 
 
 First, we need to define the list of independent variables we will use in our linear regression model. We will call this initial list "variables_of_interest."
 
@@ -1081,7 +1087,7 @@ for (variable in variables_of_interest_subset_4) {
 
 
 
-Multivariate regression:
+3. Multivariate regression:
 
 We need to do a preliminary test of the correlations between each of our independent variables. This will help us identify collinearity, which would negatively impact the accuracy of our model.
 
@@ -1245,7 +1251,7 @@ cat("Most predictive features:", top_predictive_features, "\n")
 cat("Correlation between predicted and real values:", correlation, "\n")
 cat("Mean Squared Error:", mse, "\n")
 ```
-This model is slightly less predictive. 
+This model is slightly less predictive, but we no longer get a warning about a rank-deficient fit.
 
 We can try again with yet another set of variables, removing avg_bed and replacing it with ownoccupied_2010. 
 
@@ -1292,5 +1298,57 @@ cat("Most predictive features:", top_predictive_features, "\n")
 cat("Correlation between predicted and real values:", correlation, "\n")
 cat("Mean Squared Error:", mse, "\n")
 ```
-So far, this model is the most predictive.
+So far, this model is the most predictive and does not produce a warning about a rank-deficient fit.
+
+
+4. Regularization:
+
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.1  # You can adjust this parameter to control the amount of regularization
+
+for (variable in variables_of_interest) {
+  tryCatch({
+    # Prepare the data
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])[, -1] # Exclude intercept
+    y <- pg_foreclosures_train$foreclosure_pc_2020
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X, y, alpha = 1, lambda = lambda)
+    
+    # Extract coefficients
+    coef_idx <- which(colnames(X) == variable)
+    coefficient <- coef(lasso_model)[coef_idx]
+    
+    # Check if the coefficient is non-zero
+    is_predictive <- ifelse(abs(coefficient) > 0, "Yes", "No")
+    
+    # Compute residuals
+    residuals <- y - predict(lasso_model, newx = X)
+    
+    # Compute correlation between predicted and real values
+    correlation <- cor(predict(lasso_model, newx = X), y)
+    
+    # Compute mean square error
+    mse <- mean(residuals^2)
+    
+    # Print results
+    cat("Variable:", variable, "\n")
+    cat("Coefficient:", coefficient, "\n")
+    cat("Is it a predictive feature?:", is_predictive, "\n")
+    cat("Correlation:", correlation, "\n")
+    cat("Mean Square Error:", mse, "\n")
+    cat("\n")
+  }, error = function(e) {
+    cat("Error for variable:", variable, "\n")
+    cat("Error message:", e$message, "\n")
+    cat("\n")
+  })
+}
+```
+
+```{r}
+print(dim(data_subset))
+```
 
