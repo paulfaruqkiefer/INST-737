@@ -203,7 +203,8 @@ pg_fc_pt$ranges = factor(pg_fc_pt$ranges)
 
 
 
-Next, we began our process for generating a random forest model. We first trained the model with four different numbers of trees. Then, we set a predictions outcome after running the test data through the random forest. Our range of accuracy suggests that the model could be accurate. However, we would most likely want a different model to help us predict foreclosures per capita.
+Next, we began our process for generating a random forest model. We first trained the model with four different numbers of trees. Then, we set a predictions outcome after running the test data through the random forest. Our range of accuracy suggests that the model could be accurate. However, we would most likely want a different model to help us predict foreclosures per capita. As for important features, post_2010_foreclosures, mortgaged_2020, ownoccupied_2015, ownoccupied_2020, and pct_built_pre_1960 had relatively higher importance across all trees in the random forest.
+
 ```{r}
 
 # training
@@ -211,11 +212,14 @@ random_forest = randomForest(as.factor(train_data$ranges)~.,data = train_data,nt
   
 # predictions about the test data 
 predictions <- predict(random_forest, test_data) 
-  
+
+# identifying features with high importance
+importance_scores <- importance(random_forest)  
+
 # we used this function to ascertain the model's accuracy.
 accuracy <- sum(predictions == test_data$ranges) / nrow(test_data) 
 print(paste("Accuracy:", round(accuracy, 2))) 
-
+print(importance_scores)
 
 ```
 
