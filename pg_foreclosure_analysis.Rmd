@@ -1739,3 +1739,54 @@ cat("Correlation between predicted and real values:", correlation, "\n")
 cat("Mean Squared Error:", mse, "\n")
 ```
 When we use a Lasso model, we find *no* "most predictive" features. In practical terms, we can interpret this result as the Lasso algorithm finding that no single feature is dominant in predicting the foreclosure percentages, and the model relies on a combination of features with small contributions from each.
+
+5. Re-sampling: 
+
+We need to repeat our final step multiple times with different samples to see if we reach the same result.
+
+We can do this using a loop:
+
+```{r}
+# Set the number of repetitions
+num_repetitions <- 5  # You can adjust this number as needed
+
+# Loop through repetitions
+for (i in 1:num_repetitions) {
+    # Split the data into training and testing sets
+    set.seed(i)  # Use different seed for each iteration for reproducibility
+    train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+    train_data <- pg_foreclosures_per_tract[train_indices, ]
+    test_data <- pg_foreclosures_per_tract[-train_indices, ]
+
+    # Train the Lasso regression model on the training data
+    lasso_model <- cv.glmnet(as.matrix(train_data[, test_variables_3]),
+                             train_data$foreclosure_pc_2020,
+                             alpha = 1)
+
+    # Use the trained model to predict on the testing data
+    predicted_values <- predict(lasso_model, newx = as.matrix(test_data[, test_variables_3]),
+                                s = "lambda.min")
+
+    # Calculate the correlation between the predicted and real values
+    correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
+
+    # Calculate the mean squared error between the predicted and real values
+    mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
+
+    # Obtain coefficients for each feature
+    coefficients <- coef(lasso_model, s = "lambda.min")
+
+    # Identify the most predictive features
+    non_zero_coefficients <- coefficients[-1]  # Exclude intercept
+    top_predictive_features <- names(non_zero_coefficients[non_zero_coefficients != 0])
+
+    # Print the results for this run
+    cat("Run:", i, "\n")
+    cat("Correlation between predicted and real values:", correlation, "\n")
+    cat("Mean Squared Error:", mse, "\n")
+    cat("Top predictive features:", top_predictive_features, "\n")
+    cat("\n")
+}
+
+```
+
