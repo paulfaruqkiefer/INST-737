@@ -64,7 +64,7 @@ We read in our cleaned and combined dataset.
 # Read in the initial dataset, setting a guess_max limit to improve the accuracy of the data types assigned to each column.
 pg_foreclosures_per_tract <- read_csv("datasets/pg_foreclosures_per_tract.csv", guess_max = 173)
 ```
-In order to create a classification algorithm, we need to create an ordinal variable -- our response variable -- using the quantiles of the foreclosure_pc_2020 variable -- our original dependent variable. We can also create a column based on the quantiles that splits the data into two groups: the top 2 quantiles and the bottom 3 quantiles.
+ to create a classification algorithm, we need to create an ordinal variable -- our response variable -- using the quantiles of the foreclosure_pc_2020 variable -- our original dependent variable. We can also create a column based on the quantiles that splits the data into two groups: the top 2 quantiles and the bottom 3 quantiles.
 
 ```{r}
 # Create a new column "foreclosure_quantile" based on quantiles of foreclosure_pc_2020
