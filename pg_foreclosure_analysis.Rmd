@@ -983,7 +983,7 @@ for (variable in variables_of_interest_subset_4) {
 ```
 Each set of residuals appears to be roughly normally distributed around 0.
 
-Next, we can use the trained models to predict on our testing data. We will show the results together with confidence and prediction bands and prediction accuracy using (1) the correlation between the predicted and real values and (2) the mean square error between the two.
+Next, we can use the trained models to predict on our testing data. We will show the results together with confidence and prediction bands [NOT YET] and prediction accuracy using (1) the correlation between the predicted and real values and (2) the mean square error between the two.
 
 ```{r}
 for (variable in variables_of_interest_subset_1) {
@@ -1444,4 +1444,298 @@ for (variable in variables_of_interest_subset_1) {
     qqline(residuals)
 }
 ```
+We can now compare the Lasso model predictions to our actual values:
 
+Subset 1:
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+# Initialize vectors to store correlation coefficients and mean squared errors
+correlation_coefficients <- numeric(length(variables_of_interest_subset_1))
+mean_squared_errors <- numeric(length(variables_of_interest_subset_1))
+
+# Loop through each variable in variables_of_interest_subset_2
+for (i in 1:length(variables_of_interest_subset_1)) {
+    variable <- variables_of_interest_subset_1[i]
+    
+    # Prepare the data for Lasso regression
+    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  # Assuming you have a training set
+    y_train <- pg_foreclosures_train$foreclosure_pc_2020  # Assuming 'foreclosure_pc_2020' is the target variable
+    
+    # Check if X_train has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_train) == 1) {
+        X_train <- cbind(1, X_train)  # Assuming you want to include an intercept term
+    }
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = lambda)
+    
+    # Prepare the data for prediction
+    X_test <- as.matrix(pg_foreclosures_test[, variable, drop = FALSE])
+    
+    # Check if X_test has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_test) == 1) {
+        X_test <- cbind(1, X_test)  # Include an intercept term
+    }
+    
+    # Predict on testing data
+    prediction <- predict(lasso_model, newx = X_test, s = lambda)
+    
+    # Store the prediction
+    predictions <- prediction
+    
+    # Plot predicted vs. actual values with confidence bands
+    plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+         main = paste("Predicted vs. Actual for", variable),
+         xlab = "Actual Values", ylab = "Predicted Values", 
+         ylim = range(c(predictions))) 
+    abline(0, 1, col = "red") # Add a diagonal line for reference
+    
+    # Calculate correlation between predicted and actual values
+    correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+    
+    # Calculate mean square error
+    mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+    
+    # Print correlation and mean square error
+    cat("Variable:", variable, "\n")
+    cat("Correlation on Testing Data:", correlation_test, "\n")
+    cat("Mean Square Error on Testing Data:", mse_test, "\n")
+    cat("\n")
+}
+
+```
+
+Subset 2:
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+# Initialize vectors to store correlation coefficients and mean squared errors
+correlation_coefficients <- numeric(length(variables_of_interest_subset_2))
+mean_squared_errors <- numeric(length(variables_of_interest_subset_2))
+
+# Loop through each variable in variables_of_interest_subset_2
+for (i in 1:length(variables_of_interest_subset_2)) {
+    variable <- variables_of_interest_subset_2[i]
+    
+    # Prepare the data for Lasso regression
+    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  # Assuming you have a training set
+    y_train <- pg_foreclosures_train$foreclosure_pc_2020  # Assuming 'foreclosure_pc_2020' is the target variable
+    
+    # Check if X_train has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_train) == 1) {
+        X_train <- cbind(1, X_train)  # Assuming you want to include an intercept term
+    }
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = lambda)
+    
+    # Prepare the data for prediction
+    X_test <- as.matrix(pg_foreclosures_test[, variable, drop = FALSE])
+    
+    # Check if X_test has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_test) == 1) {
+        X_test <- cbind(1, X_test)  # Include an intercept term
+    }
+    
+    # Predict on testing data
+    prediction <- predict(lasso_model, newx = X_test, s = lambda)
+    
+    # Store the prediction
+    predictions <- prediction
+    
+    # Plot predicted vs. actual values with confidence bands
+    plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+         main = paste("Predicted vs. Actual for", variable),
+         xlab = "Actual Values", ylab = "Predicted Values", 
+         ylim = range(c(predictions))) 
+    abline(0, 1, col = "red") # Add a diagonal line for reference
+    
+    # Calculate correlation between predicted and actual values
+    correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+    
+    # Calculate mean square error
+    mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+    
+    # Print correlation and mean square error
+    cat("Variable:", variable, "\n")
+    cat("Correlation on Testing Data:", correlation_test, "\n")
+    cat("Mean Square Error on Testing Data:", mse_test, "\n")
+    cat("\n")
+}
+
+```
+
+Subset 3: 
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+# Initialize vectors to store correlation coefficients and mean squared errors
+correlation_coefficients <- numeric(length(variables_of_interest_subset_3))
+mean_squared_errors <- numeric(length(variables_of_interest_subset_3))
+
+# Loop through each variable in variables_of_interest_subset_2
+for (i in 1:length(variables_of_interest_subset_3)) {
+    variable <- variables_of_interest_subset_3[i]
+    
+    # Prepare the data for Lasso regression
+    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  # Assuming you have a training set
+    y_train <- pg_foreclosures_train$foreclosure_pc_2020  # Assuming 'foreclosure_pc_2020' is the target variable
+    
+    # Check if X_train has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_train) == 1) {
+        X_train <- cbind(1, X_train)  # Assuming you want to include an intercept term
+    }
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = lambda)
+    
+    # Prepare the data for prediction
+    X_test <- as.matrix(pg_foreclosures_test[, variable, drop = FALSE])
+    
+    # Check if X_test has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_test) == 1) {
+        X_test <- cbind(1, X_test)  # Include an intercept term
+    }
+    
+    # Predict on testing data
+    prediction <- predict(lasso_model, newx = X_test, s = lambda)
+    
+    # Store the prediction
+    predictions <- prediction
+    
+    # Plot predicted vs. actual values with confidence bands
+    plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+         main = paste("Predicted vs. Actual for", variable),
+         xlab = "Actual Values", ylab = "Predicted Values", 
+         ylim = range(c(predictions))) 
+    abline(0, 1, col = "red") # Add a diagonal line for reference
+    
+    # Calculate correlation between predicted and actual values
+    correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+    
+    # Calculate mean square error
+    mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+    
+    # Print correlation and mean square error
+    cat("Variable:", variable, "\n")
+    cat("Correlation on Testing Data:", correlation_test, "\n")
+    cat("Mean Square Error on Testing Data:", mse_test, "\n")
+    cat("\n")
+}
+
+```
+
+Subset 4: 
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+# Initialize vectors to store correlation coefficients and mean squared errors
+correlation_coefficients <- numeric(length(variables_of_interest_subset_4))
+mean_squared_errors <- numeric(length(variables_of_interest_subset_4))
+
+# Loop through each variable in variables_of_interest_subset_2
+for (i in 1:length(variables_of_interest_subset_4)) {
+    variable <- variables_of_interest_subset_4[i]
+    
+    # Prepare the data for Lasso regression
+    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  # Assuming you have a training set
+    y_train <- pg_foreclosures_train$foreclosure_pc_2020  # Assuming 'foreclosure_pc_2020' is the target variable
+    
+    # Check if X_train has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_train) == 1) {
+        X_train <- cbind(1, X_train)  # Assuming you want to include an intercept term
+    }
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X_train, y_train, alpha = 1, lambda = lambda)
+    
+    # Prepare the data for prediction
+    X_test <- as.matrix(pg_foreclosures_test[, variable, drop = FALSE])
+    
+    # Check if X_test has only one column, if so, convert it to a matrix with multiple columns
+    if (ncol(X_test) == 1) {
+        X_test <- cbind(1, X_test)  # Include an intercept term
+    }
+    
+    # Predict on testing data
+    prediction <- predict(lasso_model, newx = X_test, s = lambda)
+    
+    # Store the prediction
+    predictions <- prediction
+    
+    # Plot predicted vs. actual values with confidence bands
+    plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+         main = paste("Predicted vs. Actual for", variable),
+         xlab = "Actual Values", ylab = "Predicted Values", 
+         ylim = range(c(predictions))) 
+    abline(0, 1, col = "red") # Add a diagonal line for reference
+    
+    # Calculate correlation between predicted and actual values
+    correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+    
+    # Calculate mean square error
+    mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+    
+    # Print correlation and mean square error
+    cat("Variable:", variable, "\n")
+    cat("Correlation on Testing Data:", correlation_test, "\n")
+    cat("Mean Square Error on Testing Data:", mse_test, "\n")
+    cat("\n")
+}
+
+```
+
+
+We can also repeat our most successful linear regression model using a Lasso model:
+
+```{r}
+# Convert tract_number to character before splitting the data
+pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+train_data_multivariate_1 <- pg_foreclosures_per_tract[train_indices, ]
+test_data_multivariate_1 <- pg_foreclosures_per_tract[-train_indices, ]
+
+# Define predictor variables
+test_variables_3 <- c("ownoccupied_2010", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2000_2009", "poverty_2010", "nhwhite_2020", "mortgage_change_2010_2020", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
+
+# Train the Lasso regression model on the training data
+lasso_model <- cv.glmnet(as.matrix(train_data_multivariate_1[, test_variables_3]),
+                         train_data_multivariate_1$foreclosure_pc_2020,
+                         alpha = 1) # Use alpha = 1 for Lasso regression
+
+# Use the trained model to predict on the testing data
+predicted_values <- predict(lasso_model, newx = as.matrix(test_data_multivariate_1[, test_variables_3]),
+                            s = "lambda.min")
+
+# Calculate the correlation between the predicted and real values
+correlation <- cor(predicted_values, test_data_multivariate_1$foreclosure_pc_2020)
+
+# Calculate the mean squared error between the predicted and real values
+mse <- mean((predicted_values - test_data_multivariate_1$foreclosure_pc_2020)^2)
+
+# Obtain coefficients for each feature
+coefficients <- coef(lasso_model, s = "lambda.min")
+print(coefficients)
+
+# Identify the most predictive features
+# Non-zero coefficients indicate predictive features in Lasso regression
+non_zero_coefficients <- coefficients[-1] # Exclude intercept
+top_predictive_features <- names(non_zero_coefficients[non_zero_coefficients != 0]) # Select features with non-zero coefficients
+
+# Print the most predictive features, correlation, and mean squared error
+cat("Most predictive features:", top_predictive_features, "\n")
+cat("Correlation between predicted and real values:", correlation, "\n")
+cat("Mean Squared Error:", mse, "\n")
+```
+When we use a Lasso model, we find *no* "most predictive" features. In practical terms, we can interpret this result as the Lasso algorithm finding that no single feature is dominant in predicting the foreclosure percentages, and the model relies on a combination of features with small contributions from each.
