@@ -776,23 +776,228 @@ write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
 
-We need to do a preliminary test of the correlations between each of our independent variables. This will help us identify collinearity, which would negatively impact the accuracy of our model.
+Linear regression: 
+
+First, we need to define the list of independent variables we will use in our linear regression model. We will call this initial list "variables_of_interest."
+
 ```{r}
-# Selecting the variables of interest
-variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
-                            "tract_medincome_2010", "foreclosure_pc_2020", "foreclosure_pc_2010", 
+# Selecting the variables of interest (excluding foreclosure_pc_2020)
+variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "foreclosure_pc_2010", 
                             "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
                             "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
                             "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
                             "pct_4_more_bd", "poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
                             "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
                             "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
-                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",   "poverty_change_2010_2020", 
-                            "nhwhite_change_2010_2020", "medincome_change_2010_2015", "medincome_change_2015_2020", 
-                            "medincome_change_2010_2020")
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020",
+                            "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015",
+                            "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
+```
 
+Next, we divide our data into training and test sets.
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# Split data into training and testing datasets (e.g., 80% training, 20% testing)
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+pg_foreclosures_train <- pg_foreclosures_per_tract[train_indices, ]
+pg_foreclosures_test <- pg_foreclosures_per_tract[-train_indices, ]
+```
+
+Next, we loop over each independent variable and extract the information needed for question 1a. 
+
+```{r}
+for (variable in variables_of_interest) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Extract required information
+  intercept <- coef(model)[1]
+  coefficient <- coef(model)[2]
+  
+  # Check if the coefficient is statistically significant
+  p_value <- summary(model)$coefficients[which(rownames(summary(model)$coefficients) == variable), "Pr(>|t|)"]
+  is_predictive <- ifelse(p_value < 0.05, "Yes", "No")
+  
+  # Compute residuals
+  residuals <- resid(model)
+  
+  # Compute correlation between predicted and real values
+  correlation <- cor(predict(model), pg_foreclosures_train$foreclosure_pc_2020 )
+  
+  # Compute mean square error
+  mse <- mean((predict(model) - pg_foreclosures_train$foreclosure_pc_2020 )^2)
+  
+  # Print results
+  cat("Variable:", variable, "\n")
+  cat("Intercept:", intercept, "\n")
+  cat("Coefficient:", coefficient, "\n")
+  cat("Is it a predictive feature?:", is_predictive, "\n")
+  cat("Correlation:", correlation, "\n")
+  cat("Mean Square Error:", mse, "\n")
+  cat("\n")
+}
+```
+Evidently, the most predictive features are:
+
+1. mortgaged_2010/mortgaged_2015/mortgaged_2020. These are perhaps a little too obvious -- zip codes with more mortgaged homes are intuitively more likely to have a higher number of foreclosures per capita.
+
+2. foreclosure_pc_2010. Once again, this is intuitive -- tracts that saw more foreclosures per capita during the height of the great recession likely have risk factors (included in our list of variables or not) that remained after 2010.
+
+3. ownoccupied_2010/ownoccupied_2015/ownoccupied_2020. See (1).
+
+4. tract_medage_2020. According to the linear model, tracts with a higher median age are more likely to see higher rates of foreclosure per capita.
+
+5. pct_1_bd/avg_bed. The exact reason for this correlation is not entirely clear.
+
+6. poverty_2010. The tract-level poverty rate in 2020 is more predictive than the poverty rate in 2010 and the median income at the tract leve in 2010 or 2020. This may be misleading -- a tract that saw a high rate of foreclosures between 2010-2020 may be poorer as a result of those foreclosures.
+
+
+For readability, we can plot the residuals for each variable separately. Unfortunately, our list of variables is too long, so we need to break it into pieces and plot the residuals that way.
+
+Subset 1:
+```{r}
+# Selecting the variables for first round
+variables_of_interest_subset_1 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
+                            "tract_medincome_2010", "medincome_change_2010_2015",
+                            "medincome_change_2015_2020", "medincome_change_2010_2020", "foreclosure_pc_2010")
+```
+
+Subset 2:
+```{r}
+variables_of_interest_subset_2 <- c( 
+                            "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009", 
+                            "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", 
+                            "pct_built_pre_1960", "pct_0_bd", "pct_1_bd", "pct_2_bd", "pct_3_bd", 
+                            "pct_4_more_bd")
+```
+
+Subset 3:
+```{r}
+variables_of_interest_subset_3 <- c("poverty_2010", "poverty_2020", "nhwhite_2010", "nhwhite_2020", 
+
+                            "poverty_change_2010_2020","nhwhite_change_2010_2020", "pop_change_pct")
+```
+
+Subset 4:
+```{r}
+variables_of_interest_subset_4 <- c(
+                            "mortgaged_2010", "mortgaged_2015", "mortgaged_2020", "ownoccupied_2010", 
+                            "ownoccupied_2015", "ownoccupied_2020", "mortgage_change_2010_2015", 
+                            "mortgage_change_2015_2020", "mortgage_change_2010_2020","ownoccupied_change_2010_2015",                             "ownoccupied_change_2015_2020", "ownoccupied_change_2010_2020")
+```
+
+
+
+Now we can plot the residuals.
+
+Subset 1:
+
+```{r}
+par(mfrow=c(3, 4))
+par(mar=c(3, 3, 2, 1)) 
+
+for (variable in variables_of_interest_subset_1) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Compute residuals
+  residuals <- resid(model)
+  
+  # Plot residuals
+  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+}
+```
+Subset 2:
+```{r}
+par(mfrow=c(3, 4))
+par(mar=c(3, 3, 2, 1)) 
+
+for (variable in variables_of_interest_subset_2) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+  # Compute residuals
+  residuals <- resid(model)
+  
+  # Plot residuals
+  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+}
+```
+```{r}
+par(mfrow=c(3, 4))
+par(mar=c(3, 3, 2, 1)) 
+
+for (variable in variables_of_interest_subset_3) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  
+  # Compute residuals
+  residuals <- resid(model)
+  
+  # Plot residuals
+  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+
+}
+```
+```{r}
+par(mfrow=c(3, 4))
+par(mar=c(3, 3, 2, 1)) 
+
+for (variable in variables_of_interest_subset_4) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  
+  # Compute residuals
+  residuals <- resid(model)
+  
+  # Plot residuals
+  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+
+}
+```
+Each set of residuals appears to be roughly normally distributed around 0.
+
+Next, we can use the trained models to predict on our testing data. We will show the results together with confidence and prediction bands and prediction accuracy using (1) the correlation between the predicted and real values and (2) the mean square error between the two.
+
+```{r}
+par(mfrow=c(3, 4)) # Adjust rows and columns according to your preference
+
+for (variable in variables_of_interest_subset_1) {
+  # Perform linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  
+  # Use the trained model to predict on testing data
+  predictions <- predict(model, newdata = pg_foreclosures_test)
+  
+  # Calculate correlation between predicted and actual values
+  correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+  
+  # Calculate mean square error
+  mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  
+  # Plot predicted vs. actual values
+  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+       main = paste("Predicted vs. Actual for", variable),
+       xlab = "Actual Values", ylab = "Predicted Values")
+  abline(0, 1, col = "red") # Add a diagonal line for reference
+  
+  # Print correlation and mean square error
+  cat("Variable:", variable, "\n")
+  cat("Correlation on Testing Data:", correlation_test, "\n")
+  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("\n")
+}
+
+```
+
+We need to do a preliminary test of the correlations between each of our independent variables. This will help us identify collinearity, which would negatively impact the accuracy of our model.
+```{r}
 # Calculating the correlation matrix
-correlation_matrix <- cor(pg_foreclosures_per_tract[variables_all])
+correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest])
 
 ```
 
@@ -815,6 +1020,7 @@ for (i in 1:nrow(highly_correlated)) {
 
 
 Both to answer the main questions and to determine which of the collinear variables to keep in our "variables of interest" list (or version of said list), we can test the correlation coefficients of our independent variables/our dependent variable.
+
 ```{r}
 # Selecting the variables of interest (excluding foreclosure_pc_2020)
 variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
@@ -836,16 +1042,7 @@ correlation_matrix <- cor(pg_foreclosures_per_tract[variables_of_interest], pg_f
 print(correlation_matrix)
 ```
 
-Of the independent variables/groups of related independent variables available to us, the most strongly correlated with foreclosures per capita are:
 
-1. foreclosure_pc_2010
-2. mortgaged_2010/2015/2020
-3. own_occupied_2010/2015/2020
-4. tract_medage_2020
-5. pct_0_bd/pct_1_bd/pct_2_bd/pct_4_more_bed
-6. poverty_2010/2020
-9. tract_medincome_2010/2020
-10. avg_bed
 
 We can also visualize these correlation coefficients as a bar chart:
 ```{r}
@@ -880,6 +1077,10 @@ for (variable in variables_of_interest) {
        xlab = variable, ylab = "foreclosure_pc_2020", main = paste("Scatterplot of", variable))
 }
 ```
+
+
+
+
 
 
 To answer the core questions, we also need to assess the residuals.
@@ -923,13 +1124,14 @@ curve(dnorm(x, mean = mean(residuals), sd = sd(residuals)), add = TRUE, col = "b
 ```
 
 
+Multivariate Regression:
+
 Next, we can define a set of variables to test that does not include collinear variables and that prioritize the variables from collinear sets (nhwhite_2020, for instance) with the highest correlation coefficient within their set.
 
 ```{r}
 # Selecting the variables of interest (excluding foreclosure_pc_2020)
 test_variables_1 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009",  "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", "pct_built_pre_1960", "poverty_2010", "nhwhite_2020", "mortgaged_2010", "mortgage_change_2010_2015", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 ```
-
 We can now run that list of variables through a linear regression model. 
 ```{r}
 # Convert tract_number to character before splitting the data
@@ -956,5 +1158,10 @@ mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
 # Print the correlation and mean squared error
 cat("Correlation between predicted and real values:", correlation, "\n")
 cat("Mean Squared Error:", mse, "\n")
+```
+This is a reasonably strong model, but there is certainly room for improvement.
+
+```{r}
+
 ```
 
