@@ -145,7 +145,9 @@ From our previous analyses, we also know that the following variables/groups of 
 
 With that in mind, we can begin testing models. Because our response variable is ordinal rather than binary, we will use a proportional odds logistic regression formula.
 
-The first model includes only variables that use the whole tract population as the sample/denominator, including our single most predictive variable -- foreclosure_pc_2010, which represents the number of foreclosures per capita in a tract during the height of the great recession (2008-2010). We also use the median age in 2020 and poverty in 2010 variables, which are both highly predictive.
+The combination of variables from the *linear regression section* of this milestone that produced the most predictive model do not work in this case -- they include too much collinearity for the function to work. 
+
+Instead, we will test a first model that includes only variables that use the whole tract population as the sample/denominator, including our single most predictive variable -- foreclosure_pc_2010, which represents the number of foreclosures per capita in a tract during the height of the great recession (2008-2010). We also use the median age in 2020 and poverty in 2010 variables, which are both highly predictive.
 
 
 ```{r}
@@ -205,7 +207,10 @@ model_5 <- polr(foreclosure_quantile ~ foreclosure_pc_2010 + tract_medage_2020 +
 # Summarize the model
 summary(model_5)
 ```
-This model is the most predictive we've tried, and -- surprisingly -- the percentage of residents in a tract claiming non-Hispanic white ancestry is the most predictive variable in this model. We can also calculate the odds ratio for each variable. 
+This model is the most predictive we've tried, and -- surprisingly -- the percentage of residents in a tract claiming non-Hispanic white ancestry is the most predictive variable in this model. 
+
+
+We can also calculate the odds ratio for each variable. 
 
 ```{r}
 # Define coefficients
@@ -264,37 +269,18 @@ It appears that this model only correctly predicts the foreclosure per capita qu
 
 !!Naive Bayes!!: 
 
-To create a Naive Bayes model, we will create a new dataframe featuring categorical variables for each of the elevent independent variables in our fifth proportional odds logistic regression model. Those categorical variables are made by dividing each independent variables into quantiles and assigning a number (1 for first quantile, etc.).
 
-```{r}
-pg_foreclosures_per_tract_naive_bayes <- pg_foreclosures_per_tract_log_reg %>%
-  mutate(
-    nhwhite_2020_quantile = ntile(nhwhite_2020, 5),
-    foreclosure_pc_2010_quantile = ntile(foreclosure_pc_2010, 5),
-    tract_medage_2020_quantile = ntile(tract_medage_2020, 5),
-    poverty_2010_quantile = ntile(poverty_2010, 5),
-    medincome_change_2015_2020_quantile = ntile(medincome_change_2015_2020, 5),
-    avg_bed_quantile = ntile(avg_bed, 5),
-    mortgaged_2010_quantile = ntile(mortgaged_2010, 5),
-    pct_1_bd_quantile = ntile(pct_1_bd, 5),
-    pct_built_pre_1960_quantile = ntile(pct_built_pre_1960, 5),
-    pct_built_2000_2009_quantile = ntile(pct_built_2000_2009, 5),
-    mortgage_change_2010_2015_quantile = ntile(mortgage_change_2010_2015, 5)
-  )
-```
-
-
-Now that we have a new dataframe with categorical variables for each of our independent variables, we can divide the pg_foreclosures_per_tract_naive_bayes dataframe into training and test sets.
+To start, we divide the pg_foreclosures_per_tract_log_reg dataframe into training and test sets.
 
 
 ```{r}
 set.seed(123) # For reproducibility
 test_percent <- 0.2
-indices <- sample(1:nrow(pg_foreclosures_per_tract_naive_bayes), 
-                  size = round(test_percent * nrow(pg_foreclosures_per_tract_naive_bayes)))
+indices <- sample(1:nrow(pg_foreclosures_per_tract_log_reg), 
+                  size = round(test_percent * nrow(pg_foreclosures_per_tract_log_reg)))
 
-train_data_2 <- pg_foreclosures_per_tract_naive_bayes[-indices, ]
-test_data_2 <- pg_foreclosures_per_tract_naive_bayes[indices, ]
+train_data_2 <- pg_foreclosures_per_tract_log_reg[-indices, ]
+test_data_2 <- pg_foreclosures_per_tract_log_reg[indices, ]
 ```
 
 We can now train the Naive Bayes model using the same set of independent variables from the fifth proportional odds logistic regression model.
@@ -330,4 +316,39 @@ confusion_matrix <- confusionMatrix(predictions, factor(test_data_2$foreclosure_
 # Print the confusion matrix
 print(confusion_matrix)
 ```
+!! Laplace Estimator !!
+
+```{r}
+# Train Naive Bayes Model with Laplace estimator
+
+# Fit the Naive Bayes model with Laplace smoothing
+naive_bayes_model_laplace <- naiveBayes(foreclosure_quantile ~ nhwhite_2020 + 
+                                           foreclosure_pc_2010 + 
+                                           tract_medage_2020 + 
+                                           poverty_2010 + 
+                                           medincome_change_2010_2020 + 
+                                           avg_bed + 
+                                           mortgaged_2010 + 
+                                           pct_1_bd + 
+                                           pct_built_pre_1960 + 
+                                           pct_built_2000_2009 + 
+                                           mortgage_change_2010_2015 +
+                                           pop_change_pct, 
+                                       data = pg_foreclosures_per_tract_naive_bayes,
+                                       laplace = 1) # You can adjust the laplace value as needed
+
+# Summary of the model with Laplace estimator
+summary(naive_bayes_model_laplace)
+```
+```{r}
+# Predict using the Naive Bayes model
+predictions <- predict(naive_bayes_model_laplace, newdata = test_data_2)
+
+# Create the confusion matrix
+confusion_matrix <- confusionMatrix(predictions, factor(test_data_2$foreclosure_quantile, levels = 1:5))
+
+# Print the confusion matrix
+print(confusion_matrix)
+```
+
 
