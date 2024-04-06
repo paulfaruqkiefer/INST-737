@@ -898,14 +898,16 @@ variables_of_interest_subset_4 <- c(
 
 
 
-Now we can plot the residuals.
+Now we can plot the residuals using quantile-quantile plots to assess whether the residuals are normally distributed.
 
 Subset 1:
 
 ```{r}
-par(mfrow=c(3, 4))
-par(mar=c(3, 3, 2, 1)) 
+# Set up the plotting grid
+par(mfrow=c(3, 4))  # 3 rows, 4 columns for the plots
+par(mar=c(3, 3, 2, 1))  # Adjust margins
 
+# Loop through each variable in the subset
 for (variable in variables_of_interest_subset_1) {
   # Perform linear regression
   model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
@@ -913,15 +915,19 @@ for (variable in variables_of_interest_subset_1) {
   # Compute residuals
   residuals <- resid(model)
   
-  # Plot residuals
-  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+  # Plot Q-Q normal plot
+  qqnorm(residuals, main = paste("Q-Q Normal plot for", variable))
+  qqline(residuals)  # Add a reference line
+  
 }
 ```
 Subset 2:
 ```{r}
-par(mfrow=c(3, 4))
-par(mar=c(3, 3, 2, 1)) 
+# Set up the plotting grid
+par(mfrow=c(3, 4))  # 3 rows, 4 columns for the plots
+par(mar=c(3, 3, 2, 1))  # Adjust margins
 
+# Loop through each variable in the subset
 for (variable in variables_of_interest_subset_2) {
   # Perform linear regression
   model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
@@ -929,42 +935,50 @@ for (variable in variables_of_interest_subset_2) {
   # Compute residuals
   residuals <- resid(model)
   
-  # Plot residuals
-  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
+  # Plot Q-Q normal plot
+  qqnorm(residuals, main = paste("Q-Q Normal plot for", variable))
+  qqline(residuals)  # Add a reference line
+  
 }
 ```
 Subset 3:
 ```{r}
-par(mfrow=c(3, 4))
-par(mar=c(3, 3, 2, 1)) 
+# Set up the plotting grid
+par(mfrow=c(3, 4))  # 3 rows, 4 columns for the plots
+par(mar=c(3, 3, 2, 1))  # Adjust margins
 
+# Loop through each variable in the subset
 for (variable in variables_of_interest_subset_3) {
   # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
   
   # Compute residuals
   residuals <- resid(model)
   
-  # Plot residuals
-  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
-
+  # Plot Q-Q normal plot
+  qqnorm(residuals, main = paste("Q-Q Normal plot for", variable))
+  qqline(residuals)  # Add a reference line
+  
 }
 ```
 Subset 4:
 ```{r}
-par(mfrow=c(3, 4))
-par(mar=c(3, 3, 2, 1)) 
+# Set up the plotting grid
+par(mfrow=c(3, 4))  # 3 rows, 4 columns for the plots
+par(mar=c(3, 3, 2, 1))  # Adjust margins
 
+# Loop through each variable in the subset
 for (variable in variables_of_interest_subset_4) {
   # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_per_tract[, c(variable, "foreclosure_pc_2020")])
+  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
   
   # Compute residuals
   residuals <- resid(model)
   
-  # Plot residuals
-  plot(residuals, main = paste("Residuals for", variable), xlab = "Index", ylab = "Residuals")
-
+  # Plot Q-Q normal plot
+  qqnorm(residuals, main = paste("Q-Q Normal plot for", variable))
+  qqline(residuals)  # Add a reference line
+  
 }
 ```
 Each set of residuals appears to be roughly normally distributed around 0.
@@ -980,15 +994,15 @@ for (variable in variables_of_interest_subset_1) {
   predictions <- predict(model, newdata = pg_foreclosures_test, interval = "confidence", level = 0.95)
   
   # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions[, 1], pg_foreclosures_test$foreclosure_pc_2020)
+  correlation_test <- cor(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)
   
   # Calculate mean square error
-  mse_test <- mean((predictions[, 1] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  mse_test <- mean((predictions[, "fit"] - pg_foreclosures_test$foreclosure_pc_2020)^2)
   
-  # Plot predicted vs. actual values with confidence bands
- plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, 1], 
+  # Plot predicted vs. actual values
+  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, "fit"], 
        main = paste("Predicted vs. Actual for", variable),
-       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, 2], predictions[, 3])))
+       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)))
   abline(0, 1, col = "red") # Add a diagonal line for reference
   
   # Print correlation and mean square error
@@ -997,7 +1011,6 @@ for (variable in variables_of_interest_subset_1) {
   cat("Mean Square Error on Testing Data:", mse_test, "\n")
   cat("\n")
 }
-
 ```
 
 ```{r}
@@ -1303,15 +1316,15 @@ So far, this model is the most predictive and does not produce a warning about a
 
 4. Regularization:
 
+We perform a Lasso regression on the variables of interest.
 
 ```{r}
 # Set the lambda (regularization) parameter
-lambda <- 0.1  # You can adjust this parameter to control the amount of regularization
+lambda <- 0.2
 
 for (variable in variables_of_interest) {
-  tryCatch({
     # Prepare the data
-    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])[, -1] # Exclude intercept
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variables_of_interest, "foreclosure_pc_2020")])[, -1]
     y <- pg_foreclosures_train$foreclosure_pc_2020
     
     # Fit the Lasso regression model
@@ -1340,15 +1353,7 @@ for (variable in variables_of_interest) {
     cat("Correlation:", correlation, "\n")
     cat("Mean Square Error:", mse, "\n")
     cat("\n")
-  }, error = function(e) {
-    cat("Error for variable:", variable, "\n")
-    cat("Error message:", e$message, "\n")
-    cat("\n")
-  })
 }
 ```
 
-```{r}
-print(dim(data_subset))
-```
 
