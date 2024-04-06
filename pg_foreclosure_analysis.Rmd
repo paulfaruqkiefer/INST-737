@@ -1316,7 +1316,7 @@ So far, this model is the most predictive and does not produce a warning about a
 
 4. Regularization:
 
-We perform a Lasso regression on the variables of interest.
+We perform a Lasso regression for each of the variables of interest using a loop:
 
 ```{r}
 # Set the lambda (regularization) parameter
@@ -1356,4 +1356,92 @@ for (variable in variables_of_interest) {
 }
 ```
 
+We plot the residuals for each variable:
+
+Subset 1:
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+for (variable in variables_of_interest_subset_1) {
+    # Prepare the data
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variables_of_interest, "foreclosure_pc_2020")])[, -1]
+    y <- pg_foreclosures_train$foreclosure_pc_2020
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X, y, alpha = 1, lambda = lambda)
+    
+    # Compute residuals
+    residuals <- y - predict(lasso_model, newx = X)
+    
+    # Plot Q-Q plot of residuals
+    qqnorm(residuals, main = paste("Q-Q Plot of Residuals for", variable), ylab = "Residuals")
+    qqline(residuals)
+}
+```
+Subset 2:
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+for (variable in variables_of_interest_subset_2) {
+    # Prepare the data
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variables_of_interest, "foreclosure_pc_2020")])[, -1]
+    y <- pg_foreclosures_train$foreclosure_pc_2020
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X, y, alpha = 1, lambda = lambda)
+    
+    # Compute residuals
+    residuals <- y - predict(lasso_model, newx = X)
+    
+    # Plot Q-Q plot of residuals
+    qqnorm(residuals, main = paste("Q-Q Plot of Residuals for", variable), ylab = "Residuals")
+    qqline(residuals)
+}
+```
+Subset 3:
+
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+for (variable in variables_of_interest_subset_3) {
+    # Prepare the data
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variables_of_interest, "foreclosure_pc_2020")])[, -1]
+    y <- pg_foreclosures_train$foreclosure_pc_2020
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X, y, alpha = 1, lambda = lambda)
+    
+    # Compute residuals
+    residuals <- y - predict(lasso_model, newx = X)
+    
+    # Plot Q-Q plot of residuals
+    qqnorm(residuals, main = paste("Q-Q Plot of Residuals for", variable), ylab = "Residuals")
+    qqline(residuals)
+}
+```
+Subset 4:
+```{r}
+# Set the lambda (regularization) parameter
+lambda <- 0.2
+
+for (variable in variables_of_interest_subset_1) {
+    # Prepare the data
+    X <- model.matrix(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variables_of_interest, "foreclosure_pc_2020")])[, -1]
+    y <- pg_foreclosures_train$foreclosure_pc_2020
+    
+    # Fit the Lasso regression model
+    lasso_model <- glmnet(X, y, alpha = 1, lambda = lambda)
+    
+    # Compute residuals
+    residuals <- y - predict(lasso_model, newx = X)
+    
+    # Plot Q-Q plot of residuals
+    qqnorm(residuals, main = paste("Q-Q Plot of Residuals for", variable), ylab = "Residuals")
+    qqline(residuals)
+}
+```
 
