@@ -1,0 +1,251 @@
+---
+title: "decision trees 2"
+author: "Pablo Suarez"
+date: "2024-04-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+##install.packages("ggrepel")
+##install.packages('ggthemes')
+library(tidyverse)
+#Necessary for date parsing.
+library(lubridate)
+#Necessary for column name cleaning.
+library(janitor)
+#Eventually necessary for visualization
+library(ggthemes)
+#Necessary for Census API calls.
+library(tidycensus)
+#Eventually necessary for visualizations.
+library(ggplot2)
+#Potentially necessary for cleaning.
+library(ggrepel)
+#Eventually necessary for visualizations.
+library(tigris)
+#Simple features.
+library(sf)
+#Eventually necessary for mapping.
+library(ggmap)
+library(gmodels)
+library(C50)
+#install.packages("randomForest") needed for random forests
+library(randomForest)
+#install.packages("ipred") 
+library(ipred) 
+#install.packages("rpart")
+library(rpart)
+#install.packages("rpart.plot")
+library(rpart.plot)
+
+```
+
+
+
+Read in the cleaned dataset.
+```{r}
+
+pg_foreclosures_per_tract <- read_csv("pg_foreclosures_per_tract.csv")
+View(pg_foreclosures_per_tract)
+
+```
+
+In this block, we are establishing our ranges for various foreclosure values per capita in 2020. We opted to try ranges (low, medium, and high) as opposed to quartiles per recommendation of our instructors. 
+```{r}
+
+pg_foreclosures_per_tract <- 
+pg_foreclosures_per_tract |>
+  mutate(ranges=
+  if_else(
+    foreclosure_pc_2020 >= 0 & foreclosure_pc_2020 < 49.55049,
+    "low",
+    if_else(
+      foreclosure_pc_2020 >= 49.55049 & foreclosure_pc_2020 < 94.04721,
+      "medium",
+      "high"
+      )
+    )
+  )
+
+```
+
+```{r}
+glimpse(pg_foreclosures_per_tract)
+
+```
+
+```{r}
+
+pg_fc_pt <- pg_foreclosures_per_tract |>
+  select(-c(foreclosure_pc_2020)) 
+
+```
+
+To begin the analysis process, we first set a seed that saves the randomized version of our data. We called this randomized dataset "random_fc2020" and pulled the 173 rows from our cleaned dataset. 
+```{r}
+
+set.seed(1)
+random_fc2020	<- pg_fc_pt[order(runif(173)),]
+View(random_fc2020)
+
+```
+
+
+From there, we divided this randomized dataset into testing and training datasets at a 90/10 split of rows. The training dataset contained rows 1 through 156, while the testing dataset contained the remaining rows.
+```{r}
+
+training <- random_fc2020[1:156,]
+testing <- random_fc2020[157:173,]
+
+```
+
+
+The subsequent proportion tables from the testing and training dataset enable us to view their outcome variable distribution. After running the code block, we observed the following distributions: 
+Training | high = 30%, low = 30%, and medium = ~40%
+Testing | high = 11%, low = 35%, and medium = ~53%
+
+```{r}
+
+prop.table(table(training$ranges))
+prop.table(table(testing$ranges))
+
+```
+
+Here, we created and trained the decision tree model. 
+```{r}
+
+training$ranges<-as.factor(training$ranges)
+
+model <-C5.0(training[46], training$ranges)
+summary(model)
+
+```
+
+
+This section with the confusion matrix for the test set compares the actual value with the predicted value of the decision tree. Shown below, the actual values equal the predicted values. This suggests a 100% accuracy rate, but the low sample size also heavily influences this outcome. This shows that the distribution after the split is similar to the original. 
+```{r}
+
+predict <- predict(model,testing)
+CrossTable(testing$ranges,	predict,prop.chisq=FALSE, prop.c=FALSE,	prop.r=	FALSE,	
+           dnn	=	c('actual',	'predicted'))
+
+```
+
+Our first attempts at plotting did not produce expected or optimal results for analysis. 
+```{r}
+
+plot(model, trial = 0, subtree = NULL)
+
+```
+
+
+We found more useful results using a different method of plotting our decision tree. This method visualized how the model is determining outcomes using our low, medium, and high structure. Among the variables that it prioritized were post-2010 foreclosures values less than 157, post-2010 foreclosures greater than or equal to 335, 2020 tract population less than 4,854, post-2010 foreclosures greater than or equal to 541, 2020 tract population less than 2,959, 2020 tract population greater than or equal to 4,106, and the percentage of 1 bedroom units that were less than 10%.
+
+We initially expected variables like median income to be our ideal predictors, as opposed to the variables we ultimately observed in the tree. We were surprised to see that omission considering the variable's relevance in other forms of predictive analysis. We didn't necessarily expect post-2010 foreclosures as a predictive variable. However, this makes some sense in retrospect because it is likely that tracts that previously showed lower numbers of foreclosures would have a lower foreclosure rate in the future compared to other tracks with a higher number of foreclosures. Tract populations in 2020 was another interesting variable to us. The tree indicates that higher population counts in a given tract led to higher foreclosure potential. This may be explained by the fact that a higher populated area presents more opportunities for foreclosures as opposed to a less populated area. More testing would be needed to confirm that hypothesis. The other unexpected variable was the percentage of 1 bedroom units that were less than 10%. This resulted in lower probabilities to foreclose, which could have been the case because residents of one-bedroom properties might have relatively lower monthly payments and living expenses compared to families or residents of properties with a higher number of bedrooms. Although, we would need to examine this further with more data.
+
+Our tree begins by looking at post-2010 foreclosures values per tract in our dataset that are less than 157. If "yes," then the tree predicted a low chance of foreclosure, with 24% of the dataset's values. If "no," then it checked post-2010 foreclosures greater than or equal to 335. "Yes" values to that variable predicted a high chance of future foreclosures, and it branched off to check for 2020 tract populations less than 4,854. A "yes" to that variable indicates a high chance of foreclosure, and 21% of our values followed this path. A "no" to 2020 tract populations less than 4,854 led to examining post-2010 foreclosures greater than or equal to 541. "Yes" suggested a high chance of foreclosure with 7% of our values falling in this range, while "no" predicted a medium chance of foreclosure with 13% of our values. 
+
+Going back to post-2010 foreclosures greater than or equal to 335, a "no" then examined 2020 tract populations less than 2,959. A "yes" predicted a high chance of foreclosure and showed 6% of our values in this outcome, while a "no" led to looking at 2020 tract populations greater than or equal to 4,106. "Yes" outcomes led to a low chance of foreclosure (15%) and split off again based on the percentage of 1 bedroom units that were less than 10%. For this split, we saw 7% of our "yes" values with a low chance to foreclose, while "no" values (8%) indicated a medium chance to foreclose. Finally, "no" answers to 2020 tract populations greater than or equal to 4,106 (15%) indicated a medium chance to foreclose. 
+
+In summary, we observed a relatively even distribution of outcomes in the decision tree. Roughly 31% fell under low foreclosure probability outcomes, while 36% and 34% fell under medium and high foreclosure probability outcomes, respectively. The most significant low probability indicator came from tracts with post-2010 foreclosure values less than 157 (24%), the most significant medium outcomes came from 2020 tract populations greater than or equal to 4,106 (15%), and the most significant high foreclosure probability outcome came from 2020 tract populations less than 4,854 (21%).
+
+
+```{r}
+
+fit <- rpart(ranges~., data = training, method = 'class')
+
+```
+
+```{r}
+
+rpart.plot(fit)
+
+```
+
+
+We attempted to boost the model with three trials. Boosting was reduced to 1 trial given its accuracy and due to having too few classifiers.
+```{r}
+
+model3 <-C5.0(training[46],	training$ranges,trials = 3)
+summary(model3)
+
+```
+
+We then reviewed to see if the boosting assisted the accuracy. However, because the accuracy already reached 100%, we did not observe any changes.
+```{r}
+
+predict <- predict(model3,testing)
+CrossTable(testing$ranges,	predict,prop.chisq=FALSE, prop.c=FALSE,	prop.r=	FALSE,	
+           dnn	=	c('actual',	'predicted'))
+
+```
+
+
+In this step, we split this into testing and training datasets. The training data is comprised of the first 70%, while the testing holds the remaining 30%.
+
+```{r}
+
+train <- sample(nrow(pg_fc_pt), 0.7 * nrow(pg_fc_pt), 
+                replace = FALSE) 
+train_data <- pg_fc_pt[train, ] 
+test_data <- pg_fc_pt[-train, ] 
+
+pg_fc_pt$ranges = factor(pg_fc_pt$ranges)
+
+```
+
+
+
+Next, we began our process for generating a random forest model. We first trained the model with four different numbers of trees. Then, we set a predictions outcome after running the test data through the random forest. Our range of accuracy suggests that the model could be accurate. However, we would most likely want a different model to help us predict foreclosures per capita.
+```{r}
+
+# training
+random_forest = randomForest(as.factor(train_data$ranges)~.,data = train_data,ntree = 4,importance = T)
+  
+# predictions about the test data 
+predictions <- predict(random_forest, test_data) 
+  
+# we used this function to ascertain the model's accuracy.
+accuracy <- sum(predictions == test_data$ranges) / nrow(test_data) 
+print(paste("Accuracy:", round(accuracy, 2))) 
+
+
+```
+
+
+Finally, we ran our dataset through bagging models. Once again, we set the seed and randomized the dataset. Then, we conducted the bagging analysis, which adds bootstrap replications. We ran 50 bootstrap replications as it is a high number that should yield adequate results. After running the code, the misclassification error was 22.5%, which indicates our accuracy was 77.5%. This suggests that random forests with bagging helps raise our level of accuracy. However, this analysis would also greatly benefit from more data to run through these models.
+```{r}
+
+set.seed(1)
+bagfc2020	<- pg_fc_pt[order(runif(173)),]
+  
+# bagged model 
+bag <- bagging( 
+  formula = ranges ~ ., 
+  data = bagfc2020, 
+  nbagg = 50,    
+  coob = TRUE, 
+  control = rpart.control(minsplit = 2, cp = 0,  
+                         min_depth=2) 
+) 
+  
+bag
+
+```
+
+
+
+
+
+
+
+
+
+
