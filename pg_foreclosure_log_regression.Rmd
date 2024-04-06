@@ -110,7 +110,7 @@ print(infinite_values)
 
 # Check for collinear variables (using correlation matrix)
 correlation_matrix <- cor(numeric_vars)
-highly_correlated <- findCorrelation(correlation_matrix, cutoff = 0.7)
+highly_correlated <- findCorrelation(correlation_matrix, cutoff = 0.8)
 print("Highly Correlated Variables:")
 print(colnames(numeric_vars)[highly_correlated])
 ```

@@ -19,6 +19,7 @@ options(scipen=999)
 ##install.packages("ggrepel")
 ##install.packages('ggthemes')
 ##install.packages('gplots')
+#install.packages('car')
 library(tidyverse)
 library(dplyr)
 #Necessary for date parsing.
@@ -42,6 +43,8 @@ library(sf)
 library(ggmap)
 #Needed for dividing into training and test sets.
 library(caret)
+#Needed for identifying collinear variables.
+library(car)
 ```
 
 
@@ -773,7 +776,7 @@ write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 ```
 
 
-For good measure, we can also do a preliminary test of the correlations between each of our independent variables.
+We need to do a preliminary test of the correlations between each of our independent variables. This will help us identify collinearity, which would negatively impact the accuracy of our model.
 ```{r}
 # Selecting the variables of interest
 variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
@@ -791,13 +794,27 @@ variables_all <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "trac
 # Calculating the correlation matrix
 correlation_matrix <- cor(pg_foreclosures_per_tract[variables_all])
 
-# Print the correlation matrix
-print(correlation_matrix)
+```
+
+Using that correlation matrix, we can directly compute which variables have a correlation coefficient of over 0.8. 
+```{r}
+# Set a correlation threshold
+threshold <- 0.85
+
+# Find highly correlated variable pairs
+highly_correlated <- which(correlation_matrix > threshold & correlation_matrix < 1, arr.ind = TRUE)
+
+# Print highly correlated variable pairs
+for (i in 1:nrow(highly_correlated)) {
+  var1 <- rownames(correlation_matrix)[highly_correlated[i, 1]]
+  var2 <- colnames(correlation_matrix)[highly_correlated[i, 2]]
+  corr <- correlation_matrix[highly_correlated[i, 1], highly_correlated[i, 2]]
+  cat("Variables", var1, "and", var2, "are highly correlated (correlation =", corr, ")\n")
+}
 ```
 
 
-
-And we can test the correlation coefficients of our independent variables/our dependent variable.
+Both to answer the main questions and to determine which of the collinear variables to keep in our "variables of interest" list (or version of said list), we can test the correlation coefficients of our independent variables/our dependent variable.
 ```{r}
 # Selecting the variables of interest (excluding foreclosure_pc_2020)
 variables_of_interest <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020", 
@@ -850,6 +867,22 @@ barplot(correlation_vector,
         las = 2, # Rotate labels vertically
         cex.names = 0.7) # Adjust label size
 ```
+We can also visualize these correlations using a scatter plot.
+
+```{r}
+# Loop through each independent variable
+for (variable in variables_of_interest) {
+  # Create a new plotting window for each scatterplot
+  plot.new()
+  
+  # Create scatterplot
+  plot(pg_foreclosures_per_tract[[variable]], pg_foreclosures_per_tract$foreclosure_pc_2020,
+       xlab = variable, ylab = "foreclosure_pc_2020", main = paste("Scatterplot of", variable))
+}
+```
+
+
+To answer the core questions, we also need to assess the residuals.
 
 ```{r}
 # Loop through each independent variable
@@ -880,6 +913,7 @@ plot(residuals ~ fitted(lm_model), xlab = "Fitted values", ylab = "Residuals", m
 abline(h = 0, col = "red")  # Add a horizontal line at y = 0
 ```
 
+If we plot the residuals as a histogram, we see that they are (roughly) normally distributed.
 ```{r}
 # Plot histogram of residuals
 hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", ylab = "Frequency")
@@ -888,24 +922,18 @@ hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", ylab = "Fre
 curve(dnorm(x, mean = mean(residuals), sd = sd(residuals)), add = TRUE, col = "blue")
 ```
 
+
+Next, we can define a set of variables to test that does not include collinear variables and that prioritize the variables from collinear sets (nhwhite_2020, for instance) with the highest correlation coefficient within their set.
+
 ```{r}
-# Loop through each independent variable
-for (variable in variables_of_interest) {
-  # Create a new plotting window for each scatterplot
-  plot.new()
-  
-  # Create scatterplot
-  plot(pg_foreclosures_per_tract[[variable]], pg_foreclosures_per_tract$foreclosure_pc_2020,
-       xlab = variable, ylab = "foreclosure_pc_2020", main = paste("Scatterplot of", variable))
-}
+# Selecting the variables of interest (excluding foreclosure_pc_2020)
+test_variables_1 <- c("avg_bed", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2020_later", "pct_built_2010_2019", "pct_built_2000_2009",  "pct_built_1990_1999", "pct_built_1980_1989", "pct_built_1970_1979", "pct_built_pre_1960", "poverty_2010", "nhwhite_2020", "mortgaged_2010", "mortgage_change_2010_2015", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 ```
 
+We can now run that list of variables through a linear regression model. 
 ```{r}
 # Convert tract_number to character before splitting the data
 pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
-
-# Remove the tract_number variable from the list of variables of interest
-variables_of_interest <- setdiff(variables_of_interest, "tract_number")
 
 # Split the data into training and testing sets
 set.seed(123) # for reproducibility
@@ -914,10 +942,10 @@ train_data <- pg_foreclosures_per_tract[train_indices, ]
 test_data <- pg_foreclosures_per_tract[-train_indices, ]
 
 # Train the linear regression model on the training data
-lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", variables_of_interest)])
+lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", test_variables_1)])
 
 # Use the trained model to predict on the testing data
-predicted_values <- predict(lm_model, newdata = test_data[, variables_of_interest])
+predicted_values <- predict(lm_model, newdata = test_data[, test_variables_1])
 
 # Calculate the correlation between the predicted and real values
 correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
