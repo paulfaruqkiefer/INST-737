@@ -1742,6 +1742,7 @@ When we use a Lasso model, we find *no* "most predictive" features. In practical
 
 5. Re-sampling: 
 
+
 We need to repeat our final step multiple times with different samples to see if we reach the same result.
 
 We can do this using a loop:
@@ -1789,4 +1790,4 @@ for (i in 1:num_repetitions) {
 }
 
 ```
-
+The correlations between predicted results and actual results can vary relatively significantly between test sets, which is concerning. The variation is likely the result of our small sample size. 
