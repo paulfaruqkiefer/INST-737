@@ -1266,11 +1266,11 @@ cat("Mean Squared Error:", mse, "\n")
 ```
 This model is slightly less predictive, but we no longer get a warning about a rank-deficient fit.
 
-We can try again with yet another set of variables, removing avg_bed and replacing it with ownoccupied_2010. 
+We can try again with yet another set of variables, removing avg_bed and replacing it with mortgaged_2010. 
 
 ```{r}
 # Selecting test variables
-test_variables_3 <- c("ownoccupied_2010", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2000_2009", "poverty_2010", "nhwhite_2020", "mortgage_change_2010_2020", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
+test_variables_3 <- c("mortgaged_2010", "tract_homevalue_2020", "tract_medage_2020", "tract_medincome_2020",   "foreclosure_pc_2010", "pct_built_2000_2009", "poverty_2010", "nhwhite_2020", "mortgage_change_2010_2020", "poverty_change_2010_2020","nhwhite_change_2010_2020","medincome_change_2010_2015", "medincome_change_2015_2020", "medincome_change_2010_2020", "pop_change_pct")
 ```
 
 We can run that through a model:
