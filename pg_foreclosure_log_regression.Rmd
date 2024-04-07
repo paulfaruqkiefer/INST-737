@@ -236,6 +236,29 @@ The odds ratio figures suggest that a single-unit shift in the percentage of hom
 
 We can now test that model on our test set.
 
+We can first calculate the correlation between the quantile values predicted by our model and the actual quantile values of our data.
+
+```{r}
+# Predict values using the model and test data
+predicted_values <- predict(model_5, newdata = test_data, type = "class")
+
+# Calculate the correlation between predicted and actual values
+correlation <- cor(as.numeric(predicted_values), test_data$foreclosure_quantile)
+
+# Plot the correlation using a scatter plot
+plot(as.numeric(predicted_values), test_data$foreclosure_quantile,
+     xlab = "Predicted Values", ylab = "Actual Values",
+     main = "Correlation between Predicted and Actual Values")
+abline(lm(test_data$foreclosure_quantile ~ as.numeric(predicted_values)), col = "red")
+text(x = max(as.numeric(predicted_values)), 
+     y = min(test_data$foreclosure_quantile), 
+     labels = paste("Correlation:", round(correlation, 2)), pos = 2)
+```
+A correlation coefficient of 0.87 is not bad, but we are only dealing with five quantiles - we could use a better sense of how accurate this model is.
+
+
+We can also see what percentage of the predicted quantiles match the actual quantiles.
+
 ```{r}
 # Predict on test data
 predictions <- predict(model_5, newdata = test_data, type = "class")
@@ -265,6 +288,8 @@ matching_percentage <- (matching_rows / total_rows) * 100
 cat("Percentage of matching rows:", matching_percentage, "%\n")
 ```
 It appears that this model only correctly predicts the foreclosure per capita quantile at the tract level 60 percent of the time.
+
+
 
 
 !!Naive Bayes!!: 
@@ -300,11 +325,13 @@ naive_bayes_model <- naiveBayes(foreclosure_quantile ~ nhwhite_2020 +
                                   pct_built_pre_1960 + 
                                   pct_built_2000_2009 + 
                                   mortgage_change_2010_2015 +
-                                  pop_change_pct, data = pg_foreclosures_per_tract_naive_bayes)
+                                  pop_change_pct, data = pg_foreclosures_per_tract_log_reg)
 
 # Summary of the model
 summary(naive_bayes_model)
 ```
+
+We can now use the Naive Bayes model to make predictions using our test data.
 
 ```{r}
 # Predict using the Naive Bayes model
@@ -316,8 +343,15 @@ confusion_matrix <- confusionMatrix(predictions, factor(test_data_2$foreclosure_
 # Print the confusion matrix
 print(confusion_matrix)
 ```
+This output shows that the classifier has an overall accuracy of 45.71%. That is not a strong model, but it is significantly better than the No Information Rate (28.57%). However, the classifier's performance varies across quantiles, with higher accuracy for quantile 1, 3, and 5, less accuracy for quantile 2, and no accuracy for quantile 4. 
+
+Overall, this model is less strong than the original proportional odds logistic regression model.
+
+
 !! Laplace Estimator !!
 
+
+We now need to retrain the Naive Bayes model using a LaPlace estimator. 
 ```{r}
 # Train Naive Bayes Model with Laplace estimator
 
@@ -334,12 +368,14 @@ naive_bayes_model_laplace <- naiveBayes(foreclosure_quantile ~ nhwhite_2020 +
                                            pct_built_2000_2009 + 
                                            mortgage_change_2010_2015 +
                                            pop_change_pct, 
-                                       data = pg_foreclosures_per_tract_naive_bayes,
-                                       laplace = 1) # You can adjust the laplace value as needed
+                                       data = pg_foreclosures_per_tract_log_reg,
+                                       laplace = 2)
 
 # Summary of the model with Laplace estimator
 summary(naive_bayes_model_laplace)
 ```
+Now that we have trained the model, we can use it to predict results. 
+
 ```{r}
 # Predict using the Naive Bayes model
 predictions <- predict(naive_bayes_model_laplace, newdata = test_data_2)
@@ -350,5 +386,5 @@ confusion_matrix <- confusionMatrix(predictions, factor(test_data_2$foreclosure_
 # Print the confusion matrix
 print(confusion_matrix)
 ```
-
+Given that all of the categories (quantiles) appear in our training and test data sets, it is unsurprising that the Laplace estimator, which is meant to ensure that categories that do not appear in the training data are still assigned a non-zero probability, does not have an impact on the accuracy of our Naive Bayes model.
 
