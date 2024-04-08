@@ -1505,7 +1505,7 @@ for (i in 1:length(variables_of_interest_subset_1)) {
     # Store the prediction
     predictions <- prediction
     
-    # Plot predicted vs. actual values with confidence bands
+    # Plot predicted vs. actual values
     plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
          main = paste("Predicted vs. Actual for", variable),
          xlab = "Actual Values", ylab = "Predicted Values", 
