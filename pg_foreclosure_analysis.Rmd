@@ -782,7 +782,7 @@ write_csv(pg_foreclosures_per_tract, "datasets/pg_foreclosures_per_tract.csv")
 
 
 
-2. Single-variable linear regression: 
+2. Linear regression parameters:  
 
 First, we need to define the list of independent variables we will use in our linear regression model. We will call this initial list "variables_of_interest."
 
@@ -808,7 +808,7 @@ Next, we divide our data into training and test sets.
 set.seed(123)
 
 # Split data into training and testing datasets (e.g., 80% training, 20% testing)
-train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.7, list = FALSE)
 pg_foreclosures_train <- pg_foreclosures_per_tract[train_indices, ]
 pg_foreclosures_test <- pg_foreclosures_per_tract[-train_indices, ]
 ```
@@ -1461,12 +1461,12 @@ for (i in 1:length(variables_of_interest_subset_1)) {
     variable <- variables_of_interest_subset_1[i]
     
     # Prepare the data for Lasso regression
-    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  # Assuming you have a training set
-    y_train <- pg_foreclosures_train$foreclosure_pc_2020  # Assuming 'foreclosure_pc_2020' is the target variable
+    X_train <- as.matrix(pg_foreclosures_train[, variable, drop = FALSE])  
+    y_train <- pg_foreclosures_train$foreclosure_pc_2020 
     
     # Check if X_train has only one column, if so, convert it to a matrix with multiple columns
     if (ncol(X_train) == 1) {
-        X_train <- cbind(1, X_train)  # Assuming you want to include an intercept term
+        X_train <- cbind(1, X_train)  # Include an intercept term
     }
     
     # Fit the Lasso regression model
@@ -1481,23 +1481,30 @@ for (i in 1:length(variables_of_interest_subset_1)) {
     }
     
     # Predict on testing data
-    prediction <- predict(lasso_model, newx = X_test, s = lambda)
+    prediction <- predict(lasso_model, newx = X_test, s = lambda, type = "response")
     
-    # Store the prediction
-    predictions <- prediction
+    # Calculate standard errors for prediction intervals
+    X_test_augmented <- cbind(1, X_test)  # Add intercept for standard errors
+    se <- sqrt(rowSums(predict(lasso_model, newx = X_test_augmented, s = lambda, type = "nonzero")^2))
+    prediction_interval <- qnorm(0.975) * se
     
-    # Plot predicted vs. actual values with confidence bands
-    plot(pg_foreclosures_test$foreclosure_pc_2020, predictions, 
+    # Plot predicted vs. actual values with prediction bands
+    plot(pg_foreclosures_test$foreclosure_pc_2020, prediction, 
          main = paste("Predicted vs. Actual for", variable),
          xlab = "Actual Values", ylab = "Predicted Values", 
-         ylim = range(c(predictions))) 
+         ylim = range(c(prediction, pg_foreclosures_test$foreclosure_pc_2020))) 
     abline(0, 1, col = "red") # Add a diagonal line for reference
     
+    # Add prediction bands
+    matlines(x = rep(pg_foreclosures_test$foreclosure_pc_2020, 3), 
+             y = c(prediction - prediction_interval, prediction, prediction + prediction_interval), 
+             col = "green", lty = c(1, 2, 1))
+    
     # Calculate correlation between predicted and actual values
-    correlation_test <- cor(predictions, pg_foreclosures_test$foreclosure_pc_2020)
+    correlation_test <- cor(prediction, pg_foreclosures_test$foreclosure_pc_2020)
     
     # Calculate mean square error
-    mse_test <- mean((predictions - pg_foreclosures_test$foreclosure_pc_2020)^2)
+    mse_test <- mean((prediction - pg_foreclosures_test$foreclosure_pc_2020)^2)
     
     # Print correlation and mean square error
     cat("Variable:", variable, "\n")
@@ -1505,6 +1512,8 @@ for (i in 1:length(variables_of_interest_subset_1)) {
     cat("Mean Square Error on Testing Data:", mse_test, "\n")
     cat("\n")
 }
+
+
 
 ```
 
