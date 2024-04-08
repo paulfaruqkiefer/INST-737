@@ -1319,7 +1319,7 @@ So far, this model is the most predictive and does not produce a warning about a
 We perform a Lasso regression for each of the variables of interest using a loop:
 
 ```{r}
-# Set the lambda (regularization) parameter
+# Set the regularization parameter
 lambda <- 0.2
 
 for (variable in variables_of_interest) {
