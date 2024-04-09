@@ -986,135 +986,256 @@ Each set of residuals appears to be roughly normally distributed around 0.
 Next, we can use the trained models to predict on our testing data. We will show the results together with confidence and prediction bands [NOT YET] and prediction accuracy using (1) the correlation between the predicted and real values and (2) the mean square error between the two.
 
 ```{r}
+# Initialize empty vectors to store correlation coefficients and mean squared errors
+correlation_coeffs <- vector()
+mean_squared_errors <- vector()
+
+# Loop through each variable in variables_of_interest_subset_1
 for (variable in variables_of_interest_subset_1) {
-  # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  # Select the variable and the target variable in the training and testing data frames
+  train_data <- pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")]
+  test_data <- pg_foreclosures_test[, c(variable, "foreclosure_pc_2020")]
+  
+  # Remove rows with missing values
+  train_data <- na.omit(train_data)
+  test_data <- na.omit(test_data)
+  
+  # Perform univariate linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = train_data)
   
   # Use the trained model to predict on testing data and obtain confidence intervals
-  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "prediction", level = 0.95)
+  predictions <- predict(model, newdata = test_data, interval = "prediction", level = 0.95)
   
-  # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)
+  # Plot predicted values vs. independent variable values
+  plot(test_data[[variable]], test_data$foreclosure_pc_2020,
+       main = paste("Actual vs. Predicted for", variable),
+       xlab = paste("Values of", variable),
+       ylab = "Actual Values of foreclosure_pc_2020")
   
-  # Calculate mean square error
-  mse_test <- mean((predictions[, "fit"] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  # Add regression line
+  abline(model, col = "red") 
   
-  # Plot predicted vs. actual values
-  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, "fit"], 
-       main = paste("Predicted vs. Actual for", variable),
-       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)))
-  abline(0, 1, col = "red") # Add a diagonal line for reference
+  # Plot confidence bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("upr", "lwr")], 
+           lty = c(2, 2), col = "blue")
   
-  # Add confidence and prediction bands
-  matlines(x = pg_foreclosures_test$foreclosure_pc_2020, 
-           y = predictions[, c("fit", "lwr", "upr")], 
-           lty = c(1, 2, 2), col = c("black", "blue", "blue"), lwd = c(1, 1, 1))
+  # Plot prediction bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("fit", "upr", "lwr")], 
+           lty = c(1, 2, 2), col = c("black", "black", "black"))
   
-  # Print correlation and mean square error
+  # Calculate correlation coefficient and mean squared error
+  correlation_coeff <- cor(test_data$foreclosure_pc_2020, predictions[, "fit"])
+  mean_squared_error <- mean((predictions[, "fit"] - test_data$foreclosure_pc_2020)^2)
+  
+  # Store correlation coefficient and mean squared error
+  correlation_coeffs <- c(correlation_coeffs, correlation_coeff)
+  mean_squared_errors <- c(mean_squared_errors, mean_squared_error)
+  
+  # Print correlation coefficient and mean squared error
   cat("Variable:", variable, "\n")
-  cat("Correlation on Testing Data:", correlation_test, "\n")
-  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("Correlation on Testing Data:", correlation_coeff, "\n")
+  cat("Mean Square Error on Testing Data:", mean_squared_error, "\n")
   cat("\n")
 }
+
+# Print overall summary of correlation coefficients and mean squared errors
+cat("Summary of Correlation Coefficients:\n")
+print(correlation_coeffs)
+cat("\n")
+cat("Summary of Mean Squared Errors:\n")
+print(mean_squared_errors)
+
 ```
 
 ```{r}
+# Initialize empty vectors to store correlation coefficients and mean squared errors
+correlation_coeffs <- vector()
+mean_squared_errors <- vector()
+
+# Loop through each variable in variables_of_interest_subset_2
 for (variable in variables_of_interest_subset_2) {
-  # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  # Select the variable and the target variable in the training and testing data frames
+  train_data <- pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")]
+  test_data <- pg_foreclosures_test[, c(variable, "foreclosure_pc_2020")]
+  
+  # Remove rows with missing values
+  train_data <- na.omit(train_data)
+  test_data <- na.omit(test_data)
+  
+  # Perform univariate linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = train_data)
   
   # Use the trained model to predict on testing data and obtain confidence intervals
-  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "prediction", level = 0.95)
+  predictions <- predict(model, newdata = test_data, interval = "prediction", level = 0.95)
   
-  # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)
+  # Plot predicted values vs. independent variable values
+  plot(test_data[[variable]], test_data$foreclosure_pc_2020,
+       main = paste("Actual vs. Predicted for", variable),
+       xlab = paste("Values of", variable),
+       ylab = "Actual Values of foreclosure_pc_2020")
   
-  # Calculate mean square error
-  mse_test <- mean((predictions[, "fit"] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  # Add regression line
+  abline(model, col = "red") 
   
-  # Plot predicted vs. actual values
-  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, "fit"], 
-       main = paste("Predicted vs. Actual for", variable),
-       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)))
-  abline(0, 1, col = "red") # Add a diagonal line for reference
+  # Plot confidence bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("upr", "lwr")], 
+           lty = c(2, 2), col = "blue")
   
-  # Add confidence and prediction bands
-  matlines(x = pg_foreclosures_test$foreclosure_pc_2020, 
-           y = predictions[, c("fit", "lwr", "upr")], 
-           lty = c(1, 2, 2), col = c("black", "blue", "blue"), lwd = c(1, 1, 1))
+  # Plot prediction bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("fit", "upr", "lwr")], 
+           lty = c(1, 2, 2), col = c("black", "black", "black"))
   
-  # Print correlation and mean square error
+  # Calculate correlation coefficient and mean squared error
+  correlation_coeff <- cor(test_data$foreclosure_pc_2020, predictions[, "fit"])
+  mean_squared_error <- mean((predictions[, "fit"] - test_data$foreclosure_pc_2020)^2)
+  
+  # Store correlation coefficient and mean squared error
+  correlation_coeffs <- c(correlation_coeffs, correlation_coeff)
+  mean_squared_errors <- c(mean_squared_errors, mean_squared_error)
+  
+  # Print correlation coefficient and mean squared error
   cat("Variable:", variable, "\n")
-  cat("Correlation on Testing Data:", correlation_test, "\n")
-  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("Correlation on Testing Data:", correlation_coeff, "\n")
+  cat("Mean Square Error on Testing Data:", mean_squared_error, "\n")
   cat("\n")
 }
+
+# Print overall summary of correlation coefficients and mean squared errors
+cat("Summary of Correlation Coefficients:\n")
+print(correlation_coeffs)
+cat("\n")
+cat("Summary of Mean Squared Errors:\n")
+print(mean_squared_errors)
 ```
 
 ```{r}
+# Initialize empty vectors to store correlation coefficients and mean squared errors
+correlation_coeffs <- vector()
+mean_squared_errors <- vector()
+
+# Loop through each variable in variables_of_interest_subset_3
 for (variable in variables_of_interest_subset_3) {
-  # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  # Select the variable and the target variable in the training and testing data frames
+  train_data <- pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")]
+  test_data <- pg_foreclosures_test[, c(variable, "foreclosure_pc_2020")]
+  
+  # Remove rows with missing values
+  train_data <- na.omit(train_data)
+  test_data <- na.omit(test_data)
+  
+  # Perform univariate linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = train_data)
   
   # Use the trained model to predict on testing data and obtain confidence intervals
-  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "prediction", level = 0.95)
+  predictions <- predict(model, newdata = test_data, interval = "prediction", level = 0.95)
   
-  # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)
+  # Plot predicted values vs. independent variable values
+  plot(test_data[[variable]], test_data$foreclosure_pc_2020,
+       main = paste("Actual vs. Predicted for", variable),
+       xlab = paste("Values of", variable),
+       ylab = "Actual Values of foreclosure_pc_2020")
   
-  # Calculate mean square error
-  mse_test <- mean((predictions[, "fit"] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  # Add regression line
+  abline(model, col = "red") 
   
-  # Plot predicted vs. actual values
-  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, "fit"], 
-       main = paste("Predicted vs. Actual for", variable),
-       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)))
-  abline(0, 1, col = "red") # Add a diagonal line for reference
+  # Plot confidence bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("upr", "lwr")], 
+           lty = c(2, 2), col = "blue")
   
-  # Add confidence and prediction bands
-  matlines(x = pg_foreclosures_test$foreclosure_pc_2020, 
-           y = predictions[, c("fit", "lwr", "upr")], 
-           lty = c(1, 2, 2), col = c("black", "blue", "blue"), lwd = c(1, 1, 1))
+  # Plot prediction bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("fit", "upr", "lwr")], 
+           lty = c(1, 2, 2), col = c("black", "black", "black"))
   
-  # Print correlation and mean square error
+  # Calculate correlation coefficient and mean squared error
+  correlation_coeff <- cor(test_data$foreclosure_pc_2020, predictions[, "fit"])
+  mean_squared_error <- mean((predictions[, "fit"] - test_data$foreclosure_pc_2020)^2)
+  
+  # Store correlation coefficient and mean squared error
+  correlation_coeffs <- c(correlation_coeffs, correlation_coeff)
+  mean_squared_errors <- c(mean_squared_errors, mean_squared_error)
+  
+  # Print correlation coefficient and mean squared error
   cat("Variable:", variable, "\n")
-  cat("Correlation on Testing Data:", correlation_test, "\n")
-  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("Correlation on Testing Data:", correlation_coeff, "\n")
+  cat("Mean Square Error on Testing Data:", mean_squared_error, "\n")
   cat("\n")
 }
+
+# Print overall summary of correlation coefficients and mean squared errors
+cat("Summary of Correlation Coefficients:\n")
+print(correlation_coeffs)
+cat("\n")
+cat("Summary of Mean Squared Errors:\n")
+print(mean_squared_errors)
 ```
 
 ```{r}
+# Initialize empty vectors to store correlation coefficients and mean squared errors
+correlation_coeffs <- vector()
+mean_squared_errors <- vector()
+
+# Loop through each variable in variables_of_interest_subset_4
 for (variable in variables_of_interest_subset_4) {
-  # Perform linear regression
-  model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  # Select the variable and the target variable in the training and testing data frames
+  train_data <- pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")]
+  test_data <- pg_foreclosures_test[, c(variable, "foreclosure_pc_2020")]
+  
+  # Remove rows with missing values
+  train_data <- na.omit(train_data)
+  test_data <- na.omit(test_data)
+  
+  # Perform univariate linear regression
+  model <- lm(foreclosure_pc_2020 ~ ., data = train_data)
   
   # Use the trained model to predict on testing data and obtain confidence intervals
-  predictions <- predict(model, newdata = pg_foreclosures_test, interval = "prediction", level = 0.95)
+  predictions <- predict(model, newdata = test_data, interval = "prediction", level = 0.95)
   
-  # Calculate correlation between predicted and actual values
-  correlation_test <- cor(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)
+  # Plot predicted values vs. independent variable values
+  plot(test_data[[variable]], test_data$foreclosure_pc_2020,
+       main = paste("Actual vs. Predicted for", variable),
+       xlab = paste("Values of", variable),
+       ylab = "Actual Values of foreclosure_pc_2020")
   
-  # Calculate mean square error
-  mse_test <- mean((predictions[, "fit"] - pg_foreclosures_test$foreclosure_pc_2020)^2)
+  # Add regression line
+  abline(model, col = "red") 
   
-  # Plot predicted vs. actual values
-  plot(pg_foreclosures_test$foreclosure_pc_2020, predictions[, "fit"], 
-       main = paste("Predicted vs. Actual for", variable),
-       xlab = "Actual Values", ylab = "Predicted Values", ylim = range(c(predictions[, "fit"], pg_foreclosures_test$foreclosure_pc_2020)))
-  abline(0, 1, col = "red") # Add a diagonal line for reference
+  # Plot confidence bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("upr", "lwr")], 
+           lty = c(2, 2), col = "blue")
   
-  # Add confidence and prediction bands
-  matlines(x = pg_foreclosures_test$foreclosure_pc_2020, 
-           y = predictions[, c("fit", "lwr", "upr")], 
-           lty = c(1, 2, 2), col = c("black", "blue", "blue"), lwd = c(1, 1, 1))
+  # Plot prediction bands
+  matlines(x = test_data[[variable]], 
+           y = predictions[, c("fit", "upr", "lwr")], 
+           lty = c(1, 2, 2), col = c("black", "black", "black"))
   
-  # Print correlation and mean square error
+  # Calculate correlation coefficient and mean squared error
+  correlation_coeff <- cor(test_data$foreclosure_pc_2020, predictions[, "fit"])
+  mean_squared_error <- mean((predictions[, "fit"] - test_data$foreclosure_pc_2020)^2)
+  
+  # Store correlation coefficient and mean squared error
+  correlation_coeffs <- c(correlation_coeffs, correlation_coeff)
+  mean_squared_errors <- c(mean_squared_errors, mean_squared_error)
+  
+  # Print correlation coefficient and mean squared error
   cat("Variable:", variable, "\n")
-  cat("Correlation on Testing Data:", correlation_test, "\n")
-  cat("Mean Square Error on Testing Data:", mse_test, "\n")
+  cat("Correlation on Testing Data:", correlation_coeff, "\n")
+  cat("Mean Square Error on Testing Data:", mean_squared_error, "\n")
   cat("\n")
 }
+
+# Print overall summary of correlation coefficients and mean squared errors
+cat("Summary of Correlation Coefficients:\n")
+print(correlation_coeffs)
+cat("\n")
+cat("Summary of Mean Squared Errors:\n")
+print(mean_squared_errors)
 ```
 
 
@@ -1760,52 +1881,151 @@ cat("Mean Squared Error:", mse, "\n")
 When we use a Lasso model, we find *no* "most predictive" features. In practical terms, we can interpret this result as the Lasso algorithm finding that no single feature is dominant in predicting the foreclosure percentages, and the model relies on a combination of features with small contributions from each.
 
 5. Re-sampling: 
-
-
-We need to repeat our final step multiple times with different samples to see if we reach the same result.
-
-We can do this using a loop:
+We first need to repeat our univariate linear regression process multiple times with multiple samples to see if we reach the same results.
 
 ```{r}
-# Set the number of repetitions
-num_repetitions <- 5  # You can adjust this number as needed
+# Set seed for reproducibility
+set.seed(123)
 
-# Loop through repetitions
+# Define the number of repetitions
+num_repetitions <- 5
+
+# Loop for repetitions
 for (i in 1:num_repetitions) {
-    # Split the data into training and testing sets
-    set.seed(i)  # Use different seed for each iteration for reproducibility
-    train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
-    train_data <- pg_foreclosures_per_tract[train_indices, ]
-    test_data <- pg_foreclosures_per_tract[-train_indices, ]
+  # Split data into training and testing datasets (e.g., 80% training, 20% testing)
+  train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.7, list = FALSE)
+  pg_foreclosures_train <- pg_foreclosures_per_tract[train_indices, ]
+  pg_foreclosures_test <- pg_foreclosures_per_tract[-train_indices, ]
 
-    # Train the Lasso regression model on the training data
-    lasso_model <- cv.glmnet(as.matrix(train_data[, test_variables_3]),
-                             train_data$foreclosure_pc_2020,
-                             alpha = 1)
-
-    # Use the trained model to predict on the testing data
-    predicted_values <- predict(lasso_model, newx = as.matrix(test_data[, test_variables_3]),
-                                s = "lambda.min")
-
-    # Calculate the correlation between the predicted and real values
-    correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
-
-    # Calculate the mean squared error between the predicted and real values
-    mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
-
-    # Obtain coefficients for each feature
-    coefficients <- coef(lasso_model, s = "lambda.min")
-
-    # Identify the most predictive features
-    non_zero_coefficients <- coefficients[-1]  # Exclude intercept
-    top_predictive_features <- names(non_zero_coefficients[non_zero_coefficients != 0])
-
-    # Print the results for this run
-    cat("Run:", i, "\n")
-    cat("Correlation between predicted and real values:", correlation, "\n")
-    cat("Mean Squared Error:", mse, "\n")
-    cat("Top predictive features:", top_predictive_features, "\n")
+  for (variable in variables_of_interest) {
+    # Perform linear regression
+    model <- lm(foreclosure_pc_2020 ~ ., data = pg_foreclosures_train[, c(variable, "foreclosure_pc_2020")])
+  
+    # Extract required information
+    intercept <- coef(model)[1]
+    coefficient <- coef(model)[2]
+  
+    # Check if the coefficient is statistically significant
+    p_value <- summary(model)$coefficients[which(rownames(summary(model)$coefficients) == variable), "Pr(>|t|)"]
+    is_predictive <- ifelse(p_value < 0.05, "Yes", "No")
+  
+    # Compute residuals
+    residuals <- resid(model)
+  
+    # Compute correlation between predicted and real values
+    correlation <- cor(predict(model), pg_foreclosures_train$foreclosure_pc_2020 )
+  
+    # Compute mean square error
+    mse <- mean((predict(model) - pg_foreclosures_train$foreclosure_pc_2020 )^2)
+  
+    # Print results
+    cat("Repetition:", i, "\n")
+    cat("Variable:", variable, "\n")
+    cat("Intercept:", intercept, "\n")
+    cat("Coefficient:", coefficient, "\n")
+    cat("Is it a predictive feature?:", is_predictive, "\n")
+    cat("Correlation:", correlation, "\n")
+    cat("Mean Square Error:", mse, "\n")
     cat("\n")
+  }
+}
+
+
+```
+It appears that the correlation coefficient and mean squared error of each model can vary substantially depending on the training and test set.
+
+We can also test our most successful multivariate regression model with multiple training and test sets.
+
+```{r}
+
+# Set the number of iterations
+num_iterations <- 5
+
+# Initialize empty vectors to store results
+correlations <- numeric(num_iterations)
+mses <- numeric(num_iterations)
+
+for (i in 1:num_iterations) {
+  # Convert tract_number to character before splitting the data
+  pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+  # Split the data into training and testing sets
+  set.seed(i) # Use different seed for each iteration
+  train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+  train_data <- pg_foreclosures_per_tract[train_indices, ]
+  test_data <- pg_foreclosures_per_tract[-train_indices, ]
+
+  # Train the linear regression model on the training data
+  lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", test_variables_3)])
+
+  # Use the trained model to predict on the testing data
+  predicted_values <- predict(lm_model, newdata = test_data[, test_variables_3])
+
+  # Calculate the correlation between the predicted and real values
+  correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
+
+  # Calculate the mean squared error between the predicted and real values
+  mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
+
+  # Store correlation and mse
+  correlations[i] <- correlation
+  mses[i] <- mse
+}
+
+# Print the results of each iteration
+for (i in 1:num_iterations) {
+  cat("Iteration", i, "\n")
+  cat("Correlation between predicted and real values:", correlations[i], "\n")
+  cat("Mean Squared Error:", mses[i], "\n\n")
+}
+
+```
+
+
+
+We can also repeat our regularized multivariate regression model with multiple randomly sampled training and test sets.
+
+```{r}
+
+# Set the number of iterations
+num_iterations <- 5
+
+# Initialize empty vectors to store results
+correlations <- numeric(num_iterations)
+mses <- numeric(num_iterations)
+
+for (i in 1:num_iterations) {
+  # Convert tract_number to character before splitting the data
+  pg_foreclosures_per_tract$tract_number <- as.character(pg_foreclosures_per_tract$tract_number)
+
+  # Split the data into training and testing sets
+  set.seed(i) # Use different seed for each iteration
+  train_indices <- createDataPartition(pg_foreclosures_per_tract$foreclosure_pc_2020, p = 0.8, list = FALSE)
+  train_data <- pg_foreclosures_per_tract[train_indices, ]
+  test_data <- pg_foreclosures_per_tract[-train_indices, ]
+
+  # Train the linear regression model on the training data
+  lm_model <- lm(foreclosure_pc_2020 ~ ., data = train_data[, c("foreclosure_pc_2020", test_variables_3)])
+
+  # Use the trained model to predict on the testing data
+  predicted_values <- predict(lm_model, newdata = test_data[, test_variables_3])
+
+  # Calculate the correlation between the predicted and real values
+  correlation <- cor(predicted_values, test_data$foreclosure_pc_2020)
+
+  # Calculate the mean squared error between the predicted and real values
+  mse <- mean((predicted_values - test_data$foreclosure_pc_2020)^2)
+
+  # Store correlation and mse
+  correlations[i] <- correlation
+  mses[i] <- mse
+}
+
+# Print the results of each iteration
+for (i in 1:num_iterations) {
+  cat("Iteration", i, "\n")
+  cat("Correlation between predicted and real values:", correlations[i], "\n")
+  cat("Mean Squared Error:", mses[i], "\n\n")
 }
 
 ```
