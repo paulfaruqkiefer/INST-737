@@ -1,0 +1,86 @@
+---
+title: "model comparison"
+output: html_document
+date: "2024-05-01"
+---
+
+Here is the generation of the random forest
+```{r}
+random_forest = randomForest(as.factor(train_data$ranges)~.,data = train_data,ntree = 4,importance = T, na.action=na.exclude)
+summary(random_forest)
+```
+
+Here is the generation of the decision tree:
+```{r}
+training$ranges<-as.factor(training$ranges)
+
+modelDT <-C5.0(training[43], training$ranges)
+summary(model)
+predict <- predict(model,testing)
+CrossTable(testing$ranges,	predict,prop.chisq=FALSE, prop.c=FALSE,	prop.r=	FALSE,	
+           dnn	=	c('actual',	'predicted'))
+summary(predict)
+```
+
+```{r}
+pg_foreclosures_per_tract <- read_csv("datasets/pg_foreclosures_per_tract.csv", guess_max=173)
+# Step 1: Data Preprocessing
+# Set seed for reproducibility
+set.seed(123)
+
+# Randomly sample row indices for the training set
+train_index <- sample(nrow(pg_foreclosures_per_tract), 0.8 * nrow(pg_foreclosures_per_tract))
+
+# Create training and testing datasets
+train_data <- pg_foreclosures_per_tract[train_index, ]
+test_data <- pg_foreclosures_per_tract[-train_index, ]
+
+# Step 2: Model Training
+svm_model <- svm(foreclosure_pc_2020 ~ ., data = train_data, kernel = "linear")
+
+# Step 3: Model Evaluation
+# Predictions on test set
+predictionsSVM <- predict(svm_model, test_data)
+summary(predictions)
+# Calculate evaluation metrics
+#mse <- mean((test_data$foreclosure_pc_2020 - predictions)^2)
+#rmse <- sqrt(mse)
+#rsquared <- cor(predictions, test_data$foreclosure_pc_2020)^2
+
+# Print evaluation metrics
+#print(paste("Mean Squared Error (MSE):", mse))
+#print(paste("Root Mean Squared Error (RMSE):", rmse))
+#print(paste("R-squared (R²):", rsquared))
+
+
+```
+THis is how we set up the random forests
+```{r}
+train <- sample(nrow(pg_fc_pt), 0.7 * nrow(pg_fc_pt), 
+                replace = FALSE) 
+train_data <- pg_fc_pt[train, ] 
+test_data <- pg_fc_pt[-train, ] 
+
+pg_fc_pt$ranges = factor(pg_fc_pt$ranges)
+
+# training
+random_forest = randomForest(as.factor(train_data$ranges)~.,data = train_data,ntree = 4,importance = T, na.action=na.exclude)
+  
+# predictions about the test data 
+predictions <- predict(random_forest, test_data) 
+
+# identifying features with high importance
+importance_scores <- importance(random_forest)  
+
+# we used this function to ascertain the model's accuracy.
+accuracy <- sum(predictions == test_data$ranges) / nrow(test_data) 
+print(paste("Accuracy:", round(accuracy, 2))) 
+print(importance_scores)
+```
+
+
+here is how we can get the data into a model comparison:
+```{r}
+ results <- resamples(list(RF=random_forest, DT=modelDT, SVM=svm_model_poly))
+```
+
